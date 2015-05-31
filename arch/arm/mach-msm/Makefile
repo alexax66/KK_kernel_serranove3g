@@ -88,5 +88,3 @@ obj-$(CONFIG_SEC_DEBUG_DOUBLE_FREE) += sec_debug-dfd.o
 obj-$(CONFIG_SEC_BSP) += sec_bsp.o
 
 obj-$(CONFIG_SEC_THERMISTOR) += sec_thermistor.o msm8916-thermistor.o
-
-obj-$(CONFIG_HAS_MACH_MEMUTILS) += memutils/

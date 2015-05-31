@@ -146,7 +146,6 @@ config ARCH_MSM8916
 	select ARCH_WANT_KMAP_ATOMIC_FLUSH
 	select MSM_RPM_LOG
 	select MSM_JTAGV8 if CORESIGHT_ETMV4
-	select HAS_MACH_MEMUTILS
 
 config ARCH_MSM8939
 	bool "MSM8939"
@@ -1383,11 +1382,5 @@ config RTC_AUTO_PWRON_PARAM
 config SAMSUNG_PRODUCT_SHIP
         bool "set up for product shipping"
         default n
-
-config HAS_MACH_MEMUTILS
-	default n
-	bool "Motorola MSM memcpy enhancements"
-	help
-	Faster memcpy performance for Krait
 
 endif
