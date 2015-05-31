@@ -71,7 +71,8 @@ static u64 last_input_time;
  * again each time the CPU comes back up. We can use CPUFREQ_START to figure
  * out a CPU is coming online instead of registering for hotplug notifiers.
  */
-static int boost_adjust_notify(struct notifier_block *nb, unsigned long val, void *data)
+static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
+				void *data)
 {
 	struct cpufreq_policy *policy = data;
 	unsigned int cpu = policy->cpu;
