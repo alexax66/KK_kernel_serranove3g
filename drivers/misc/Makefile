@@ -73,6 +73,7 @@ obj-y				+= qcom/
 obj-$(CONFIG_SEC_MISC)	+= sec_param.o sec_misc.o
 obj-$(CONFIG_SEC_GPIO_SETTINGS) += gpio_settings.o
 obj-$(CONFIG_NFC_PN547)	+= pn547.o
+obj-$(CONFIG_GENERIC_BLN)	+= bln.o
 ifeq ($(TIMA_ENABLED),1)
 obj-y += ktest/
 obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
