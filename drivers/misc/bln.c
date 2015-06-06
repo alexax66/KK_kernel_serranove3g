@@ -13,7 +13,12 @@
 
 #include <linux/platform_device.h>
 #include <linux/init.h>
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#endif
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
@@ -171,6 +176,7 @@ static void disable_led_notification(void)
 	bln_wakelock_release();
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 /*
  * Manage early suspend callback
  */
@@ -196,6 +202,37 @@ static struct early_suspend bln_suspend_data = {
 	.suspend = bln_early_suspend,
 	.resume = bln_late_resume,
 };
+#endif
+
+#ifdef CONFIG_POWERSUSPEND
+/*
+ * Manage power suspend callback
+ */
+static void bln_power_suspend(struct power_suspend *h)
+{
+	bln_suspended = true;
+}
+
+/*
+ * Manage late resume callback
+ */
+static void bln_late_resume(struct power_suspend *h)
+{
+	/* Turn off the lights */
+	if (bln_ongoing)
+		disable_led_notification();
+	bln_suspended = false;
+}
+
+/* Early suspend and resume struct implementation */
+static struct power_suspend bln_suspend_data = {
+	.level = POWER_SUSPEND_LEVEL_BLANK_SCREEN + 1,
+	.suspend = bln_power_suspend,
+	.resume = bln_late_resume,
+};
+#endif
+
+
 
 /*
  * Get the current status of BLN feature
@@ -763,8 +800,15 @@ static int __init bln_control_init(void)
 				bln_device.name);
 	}
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	/* Register early suspend/resume management */
 	register_early_suspend(&bln_suspend_data);
+#endif
+
+#ifdef CONFIG_POWERSUSPEND
+	/* Register power suspend/resume management */
+	register_power_suspend(&bln_suspend_data);
+#endif
 
 	/* Initialize wakelock */
 	wake_lock_init(&bln_wake_lock, WAKE_LOCK_SUSPEND, "bln_wake_lock");
@@ -786,7 +830,12 @@ static void __exit bln_control_exit(void)
 	del_timer(&static_timer);
 	destroy_workqueue(bln_workqueue);
 	wake_lock_destroy(&bln_wake_lock);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&bln_suspend_data);
+#endif
+#ifdef CONFIG_POWERSUSPEND
+	unregister_power_suspend(&bln_suspend_data);
+#endif
 	misc_deregister(&bln_device);
 }
 
