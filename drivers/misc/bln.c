@@ -226,7 +226,6 @@ static void bln_late_resume(struct power_suspend *h)
 
 /* Power suspend and resume struct implementation */
 static struct power_suspend bln_suspend_data = {
-	.level = POWER_SUSPEND_LEVEL_BLANK_SCREEN + 1,
 	.suspend = bln_power_suspend,
 	.resume = bln_late_resume,
 };
