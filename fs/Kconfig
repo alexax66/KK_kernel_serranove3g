@@ -98,7 +98,7 @@ source "fs/udf/Kconfig"
 endmenu
 endif # BLOCK
 
-if BLOCK[5~
+if BLOCK
 menu "DOS/FAT/NT Filesystems"
 
 source "fs/fat/Kconfig"
