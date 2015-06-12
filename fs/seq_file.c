@@ -32,6 +32,16 @@ static void seq_set_overflow(struct seq_file *m)
 	m->count = m->size;
 }
 
+static void *seq_buf_alloc(unsigned long size)
+{
+	void *buf;
+
+	buf = kmalloc(size, GFP_KERNEL | __GFP_NOWARN);
+	if (!buf && size > PAGE_SIZE)
+		buf = vmalloc(size);
+	return buf;
+}
+
 /**
  *	seq_open -	initialize sequential file
  *	@file: file we initialize
@@ -98,7 +108,7 @@ static int traverse(struct seq_file *m, loff_t offset)
 		return 0;
 	}
 	if (!m->buf) {
-		m->buf = kmalloc(m->size = PAGE_SIZE, GFP_KERNEL);
+		m->buf = seq_buf_alloc(m->size = PAGE_SIZE);
 		if (!m->buf)
 			return -ENOMEM;
 	}
@@ -146,9 +156,9 @@ Eoverflow:
 	else
 		m->buf = vmalloc(m->size);
 #else
-	kfree(m->buf);
+	kvfree(m->buf);
 	m->count = 0;
-	m->buf = kmalloc(m->size <<= 1, GFP_KERNEL);
+	m->buf = seq_buf_alloc(m->size <<= 1);
 #endif
 	return !m->buf ? -ENOMEM : -EAGAIN;
 }
@@ -204,7 +214,7 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 
 	/* grab buffer if we didn't have one */
 	if (!m->buf) {
-		m->buf = kmalloc(m->size = PAGE_SIZE, GFP_KERNEL);
+		m->buf = seq_buf_alloc(m->size = PAGE_SIZE);
 		if (!m->buf)
 			goto Enomem;
 	}
@@ -253,9 +263,9 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 		else
 			m->buf = vmalloc(m->size);
 #else
-		kfree(m->buf);
+		kvfree(m->buf);
 		m->count = 0;
-		m->buf = kmalloc(m->size <<= 1, GFP_KERNEL);
+		m->buf = seq_buf_alloc(m->size <<= 1);
 #endif
 		if (!m->buf)
 			goto Enomem;
@@ -375,7 +385,7 @@ int seq_release(struct inode *inode, struct file *file)
 #ifdef CONFIG_LOW_ORDER_SEQ_MALLOC
 	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
 #else
-	kfree(m->buf);
+	kvfree(m->buf);
 #endif
 	kfree(m);
 	return 0;
@@ -631,13 +641,13 @@ EXPORT_SYMBOL(single_open);
 int single_open_size(struct file *file, int (*show)(struct seq_file *, void *),
 		void *data, size_t size)
 {
-	char *buf = kmalloc(size, GFP_KERNEL);
+	char *buf = seq_buf_alloc(size);
 	int ret;
 	if (!buf)
 		return -ENOMEM;
 	ret = single_open(file, show, data);
 	if (ret) {
-		kfree(buf);
+		kvfree(buf);
 		return ret;
 	}
 	((struct seq_file *)file->private_data)->buf = buf;
