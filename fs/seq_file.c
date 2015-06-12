@@ -148,11 +148,11 @@ static int traverse(struct seq_file *m, loff_t offset)
 Eoverflow:
 	m->op->stop(m, p);
 #ifdef CONFIG_LOW_ORDER_SEQ_MALLOC
-	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
+	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kvfree(m->buf);
 	m->count = 0;
 	m->size <<= 1;
 	if (m->size <= (2* PAGE_SIZE))
-		m->buf = kmalloc(m->size, GFP_KERNEL);
+		m->buf = seq_buf_alloc(m->size);
 	else
 		m->buf = vmalloc(m->size);
 #else
@@ -255,11 +255,11 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 			goto Fill;
 		m->op->stop(m, p);
 #ifdef CONFIG_LOW_ORDER_SEQ_MALLOC
-		is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
+		is_vmalloc_addr(m->buf) ? vfree(m->buf) : kvfree(m->buf);
 		m->count = 0;
 		m->size <<= 1;
 		if (m->size <= (2* PAGE_SIZE))
-			m->buf = kmalloc(m->size, GFP_KERNEL);
+			m->buf = seq_buf_alloc(m->size);
 		else
 			m->buf = vmalloc(m->size);
 #else
@@ -383,7 +383,7 @@ int seq_release(struct inode *inode, struct file *file)
 {
 	struct seq_file *m = file->private_data;
 #ifdef CONFIG_LOW_ORDER_SEQ_MALLOC
-	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
+	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kvfree(m->buf);
 #else
 	kvfree(m->buf);
 #endif
