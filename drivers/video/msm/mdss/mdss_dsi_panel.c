@@ -30,6 +30,10 @@
 /*#define PANEL_CMD_DEBUG*/
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #define DT_CMD_HDR 6
 
 /* NT35596 panel specific status variables */
@@ -457,6 +461,10 @@ static int mdss_dsi_panel_partial_update(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
+
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
@@ -656,6 +664,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 #endif
 
 	pr_debug("%s:-\n", __func__);
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
+
 	return 0;
 }
 
