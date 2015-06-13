@@ -2745,12 +2745,12 @@ int msm_venc_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 		goto exit;
 	}
 
-	fps = USEC_PER_SEC;
+	fps = (u64)USEC_PER_SEC; //Fix missing reference to '__aeabi_uldivmod'
 	do_div(fps, us_per_frame);
 
-	if ((fps % 15 == 14) || (fps % 24 == 23))
+	if (((u32)fps % 15 == 14) || ((u32)fps % 24 == 23)) //Fix missing reference to '__aeabi_uldivmod'
 		fps = fps + 1;
-	else if ((fps % 24 == 1) || (fps % 15 == 1))
+	else if (((u32)fps % 24 == 1) || ((u32)fps % 15 == 1)) //Fix missing reference to '__aeabi_uldivmod'
 		fps = fps - 1;
 
 	if (inst->prop.fps != fps) {
