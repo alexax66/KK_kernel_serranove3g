@@ -1621,6 +1621,14 @@ static int msm8x16_wcd_codec_enable_adc(struct snd_soc_dapm_widget *w,
 		if (w->reg == MSM8X16_WCD_A_ANALOG_TX_2_EN)
 			snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_MICB_1_CTL, 0x02, 0x02);
+
+		/*
+		 * Add delay of 10 ms to give sufficient time for the voltage
+		 * to shoot up and settle so that the txfe init does not
+		 * happen when the input voltage is changing too much.
+		 */
+		usleep_range(10000, 10010);
+
 		snd_soc_update_bits(codec, adc_reg, 1 << init_bit_shift,
 				1 << init_bit_shift);
 		if (w->reg == MSM8X16_WCD_A_ANALOG_TX_1_EN)
@@ -2618,8 +2626,10 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"MIC BIAS External2", NULL, "INT_LDO_H"},
 	{"MIC BIAS Internal1", NULL, "MICBIAS_REGULATOR"},
 	{"MIC BIAS Internal2", NULL, "MICBIAS_REGULATOR"},
+	{"MIC BIAS Internal3", NULL, "MICBIAS_REGULATOR"}, //legen
 	{"MIC BIAS External", NULL, "MICBIAS_REGULATOR"},
 	{"MIC BIAS External2", NULL, "MICBIAS_REGULATOR"},
+	{"MIC BIAS External3", NULL, "MICBIAS_REGULATOR"}, //legen
 };
 
 static int msm8x16_wcd_startup(struct snd_pcm_substream *substream,
