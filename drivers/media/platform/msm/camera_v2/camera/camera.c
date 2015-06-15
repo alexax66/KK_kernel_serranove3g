@@ -601,6 +601,10 @@ static int camera_v4l2_open(struct file *filep)
 		rc = msm_create_command_ack_q(pvdev->vdev->num,
 			find_first_zero_bit(&opn_idx,
 				MSM_CAMERA_STREAM_CNT_BITS));
+#ifndef CONFIG_ARCH_MSM8939
+		/* Enable power collapse latency */
+		msm_pm_qos_update_request(CAMERA_ENABLE_PC_LATENCY);
+#endif
 		if (rc < 0) {
 			pr_err("%s : creation of command_ack queue failed Line %d rc %d\n",
 					__func__, __LINE__, rc);
@@ -611,6 +615,7 @@ static int camera_v4l2_open(struct file *filep)
 		   find_first_zero_bit(&opn_idx, MSM_CAMERA_STREAM_CNT_BITS));
 	idx |= (1 << find_first_zero_bit(&opn_idx, MSM_CAMERA_STREAM_CNT_BITS));
 	atomic_cmpxchg(&pvdev->opened, opn_idx, idx);
+
 	return rc;
 
 post_fail:
@@ -674,10 +679,10 @@ static int camera_v4l2_close(struct file *filep)
 		 * and application crashes */
 		msm_destroy_session(pvdev->vdev->num);
 
-#ifndef CONFIG_ARCH_MSM8939
-		/* Enable power collapse latency */
-		msm_pm_qos_update_request(CAMERA_ENABLE_PC_LATENCY);
-#endif
+//#ifndef CONFIG_ARCH_MSM8939
+//		/* Enable power collapse latency */
+//		msm_pm_qos_update_request(CAMERA_ENABLE_PC_LATENCY);
+//#endif
 
 		pm_relax(&pvdev->vdev->dev);
 	} else {
