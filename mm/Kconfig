@@ -542,7 +542,7 @@ config ZSWAP
 config ZCACHE
 	bool "Compressed cache for swap and clean file pages (EXPERIMENTAL)"
 	depends on FRONTSWAP && CRYPTO && CLEANCACHE
-	select CRYPTO_LZO
+	select CRYPTO_LZ4
 	select ZBUD
 	default n
 	help

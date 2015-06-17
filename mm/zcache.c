@@ -52,7 +52,7 @@ static bool zcache_nocleancache __read_mostly;
 module_param_named(nocleancache, zcache_nocleancache, bool, 0);
 
 /* Compressor to be used by zcache */
-#define ZCACHE_COMPRESSOR_DEFAULT "lzo"
+#define ZCACHE_COMPRESSOR_DEFAULT "lz4"
 static char *zcache_compressor = ZCACHE_COMPRESSOR_DEFAULT;
 module_param_named(compressor, zcache_compressor, charp, 0);
 
