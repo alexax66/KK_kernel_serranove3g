@@ -539,24 +539,6 @@ config ZSWAP
 	  they have not be fully explored on the large set of potential
 	  configurations and workloads that exist.
 
-config ZCACHE
-	bool "Compressed cache for swap and clean file pages (EXPERIMENTAL)"
-	depends on FRONTSWAP && CRYPTO && CLEANCACHE
-	select CRYPTO_LZO
-	select ZBUD
-	default n
-	help
-	  A compressed cache for swap and clean file pages.
-
-	  It can takes pages that are in the process of being swapped out and
-	  attempts to compress them into a dynamically allocated RAM-based memory pool.
-	  This can result in a significant I/O reduction on swap device and,
-	  in the case where decompressing from RAM is faster that swap device
-	  reads, can also improve workload performance.
-
-	  Besides swap pages, zcache can also compress the clean file pages into a memory pool.
-	  This can reduce the refaults of reading those file pages back from disks.
-
 config ZPOOL
 	tristate "Common API for compressed memory storage"
 	default n
