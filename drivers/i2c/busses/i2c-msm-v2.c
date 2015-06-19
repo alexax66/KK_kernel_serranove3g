@@ -3696,12 +3696,6 @@ static void i2c_msm_pm_pinctrl_state(struct i2c_msm_ctrl *ctrl,
 		pins_state_name = I2C_MSM_PINCTRL_SUSPEND;
 	}
 	
-#if (defined(CONFIG_SEC_E5_PROJECT) || defined(CONFIG_SEC_HESTIA2_PROJECT)) && defined(CONFIG_TOUCHSCREEN_MMS300_E) // for ISP firmup in Melfas
-	 if (!IS_ERR_OR_NULL(ctrl->dev->of_node->child) && (strncmp(ctrl->dev->of_node->child->name,"mms300-ts",sizeof("mms300-ts")) == 0)) {
-		//dev_info(ctrl->dev,"TSP(mms300-ts) i2c pinctrl was ignored");
-		return;
-	 }	
-#endif
 
 	if (!IS_ERR_OR_NULL(pins_state)) {
 		int ret = pinctrl_select_state(ctrl->rsrcs.pinctrl, pins_state);
