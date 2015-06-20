@@ -1131,6 +1131,7 @@ static int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl)
 static void i2c_msm_qup_xfer_init_run_state(struct i2c_msm_ctrl *ctrl)
 {
 	void __iomem *base = ctrl->rsrcs.base;
+
 	writel_relaxed(ctrl->mstr_clk_ctl, base + QUP_I2C_MASTER_CLK_CTL);
 
 	/* Ensure that QUP configuration is written before leaving this func */
@@ -2910,13 +2911,12 @@ static int i2c_msm_qup_init(struct i2c_msm_ctrl *ctrl)
 }
 
 /*
- * i2c_msm_qup_do_bus_clear: issue QUP bus clear command
+ * qup_i2c_try_recover_bus_busy: issue QUP bus clear command
  */
-static int i2c_msm_qup_do_bus_clear(struct i2c_msm_ctrl *ctrl)
+static int qup_i2c_try_recover_bus_busy(struct i2c_msm_ctrl *ctrl)
 {
 	int ret;
 	ulong min_sleep_usec;
-	dev_info(ctrl->dev, "Executing bus recovery procedure (9 clk pulse)\n");
 
 	/* call i2c_msm_qup_init() to set core in idle state */
 	ret = i2c_msm_qup_init(ctrl);
@@ -2925,8 +2925,10 @@ static int i2c_msm_qup_do_bus_clear(struct i2c_msm_ctrl *ctrl)
 
 	/* must be in run state for bus clear */
 	ret = i2c_msm_qup_state_set(ctrl, QUP_STATE_RUN);
-	if (ret)
+	if (ret < 0) {
+		dev_err(ctrl->dev, "error: bus clear fail to set run state\n");
 		return ret;
+	}
 
 	/*
 	 * call i2c_msm_qup_xfer_init_run_state() to set clock dividers.
@@ -2945,7 +2947,27 @@ static int i2c_msm_qup_do_bus_clear(struct i2c_msm_ctrl *ctrl)
 	  max_t(ulong, (9 * 10 * USEC_PER_SEC) / ctrl->rsrcs.clk_freq_out, 100);
 
 	usleep_range(min_sleep_usec, min_sleep_usec * 10);
+	return ret;
+}
 
+static int qup_i2c_recover_bus_busy(struct i2c_msm_ctrl *ctrl)
+{
+	u32 bus_clr, bus_active, status;
+	int retry = 0;
+	dev_info(ctrl->dev, "Executing bus recovery procedure (9 clk pulse)\n");
+
+	do {
+		qup_i2c_try_recover_bus_busy(ctrl);
+		bus_clr    = readl_relaxed(ctrl->rsrcs.base +
+							QUP_I2C_MASTER_BUS_CLR);
+		status     = readl_relaxed(ctrl->rsrcs.base + QUP_I2C_STATUS);
+		bus_active = status & I2C_STATUS_BUS_ACTIVE;
+		if (++retry >= I2C_QUP_MAX_BUS_RECOVERY_RETRY)
+			break;
+	} while (bus_clr || bus_active);
+
+	dev_info(ctrl->dev, "Bus recovery %s after %d retries\n",
+		(bus_clr || bus_active) ? "fail" : "success", retry);
 	return 0;
 }
 
@@ -2963,9 +2985,10 @@ static int i2c_msm_qup_post_xfer(struct i2c_msm_ctrl *ctrl, int err)
 	/* poll until bus is released */
 	if (i2c_msm_qup_poll_bus_active_unset(ctrl)) {
 		if ((ctrl->xfer.err & I2C_MSM_ERR_ARB_LOST) ||
-		    (ctrl->xfer.err & I2C_MSM_ERR_BUS_ERR)) {
+		    (ctrl->xfer.err & I2C_MSM_ERR_BUS_ERR) ||
+		    (ctrl->xfer.err & I2C_MSM_ERR_TIMEOUT)) {
 			if (i2c_msm_qup_slv_holds_bus(ctrl))
-				i2c_msm_qup_do_bus_clear(ctrl);
+				qup_i2c_recover_bus_busy(ctrl);
 
 			/* do not generalize error to EIO if its already set */
 			if (!err)
@@ -3628,6 +3651,13 @@ static void i2c_msm_pm_pinctrl_state(struct i2c_msm_ctrl *ctrl,
 		pins_state      = ctrl->rsrcs.gpio_state_suspend;
 		pins_state_name = I2C_MSM_PINCTRL_SUSPEND;
 	}
+	
+#if (defined(CONFIG_SEC_E5_PROJECT) || defined(CONFIG_SEC_HESTIA2_PROJECT)) && defined(CONFIG_TOUCHSCREEN_MMS300_E) // for ISP firmup in Melfas
+	 if (!IS_ERR_OR_NULL(ctrl->dev->of_node->child) && (strncmp(ctrl->dev->of_node->child->name,"mms300-ts",sizeof("mms300-ts")) == 0)) {
+		//dev_info(ctrl->dev,"TSP(mms300-ts) i2c pinctrl was ignored");
+		return;
+	 }	
+#endif
 
 	if (!IS_ERR_OR_NULL(pins_state)) {
 		int ret = pinctrl_select_state(ctrl->rsrcs.pinctrl, pins_state);
@@ -3697,7 +3727,6 @@ static void i2c_msm_rsrcs_clk_teardown(struct i2c_msm_ctrl *ctrl)
 
 #ifdef CONFIG_DEBUG_FS
 /*
- * i2c_msm_dbgfs_clk_wrapper: take care of clocks before calling func
  *
  * this function will verify that clocks are voted for the func if that they are
  * not. This is required for functionality which touches registers from debugfs.
@@ -3745,7 +3774,7 @@ DEFINE_SIMPLE_ATTRIBUTE(i2c_msm_dbgfs_reg_dump_fops,
 static int i2c_msm_dbgfs_do_bus_clear(void *data, u64 val)
 {
 	struct i2c_msm_ctrl *ctrl = data;
-	return i2c_msm_dbgfs_clk_wrapper(ctrl, i2c_msm_qup_do_bus_clear);
+	return i2c_msm_dbgfs_clk_wrapper(ctrl, qup_i2c_recover_bus_busy);
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(i2c_msm_dbgfs_do_bus_clear_fops,
@@ -4070,6 +4099,7 @@ static int i2c_msm_probe(struct platform_device *pdev)
 	 * reset the core before registering for interrupts. This solves an
 	 * interrupt storm issue when the bootloader leaves a pending interrupt.
 	 */
+	dev_info(&pdev->dev, "[BATT]ver.reset start\n");
 	ret = (*ctrl->ver.reset)(ctrl);
 	if (ret)
 		dev_err(ctrl->dev, "error error on qup software reset\n");
@@ -4091,6 +4121,7 @@ static int i2c_msm_probe(struct platform_device *pdev)
 	if (ret)
 		goto rcrcs_err;
 
+	dev_info(&pdev->dev, "[BATT]ver.reset done\n");
 	i2c_msm_dbgfs_init(ctrl);
 
 	ret = i2c_msm_frmwrk_reg(pdev, ctrl);
@@ -4098,6 +4129,7 @@ static int i2c_msm_probe(struct platform_device *pdev)
 		goto reg_err;
 
 	i2c_msm_dbg(ctrl, MSM_PROF, "probe() completed with success");
+	dev_info(&pdev->dev, "[BATT]probe() completed with success\n");
 	return 0;
 
 reg_err:
