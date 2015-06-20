@@ -2752,50 +2752,6 @@ static irqreturn_t i2c_msm_qup_isr(int irq, void *devid)
 		goto isr_end;
 	}
 
-if (i2c_status & QUP_MSTR_STTS_ERR_MASK) {
-	signal_complete = true;
-	log_event       = true;
-
-	if (i2c_status & QUP_PACKET_NACKED) {
-	    struct i2c_msg *cur_msg = ctrl->xfer.msgs +
-			ctrl->xfer.cur_buf.msg_idx;
-	    dev_err(ctrl->dev,
-		"slave:0x%x is not responding (I2C-NACK) ensure the slave is powered and out of reset",
-		cur_msg->addr);
-
-	    ctrl->xfer.err |= I2C_MSM_ERR_NACK;
-	    dump_details = true;
-	}
-
-	if (i2c_status & QUP_ARB_LOST)
-	    ctrl->xfer.err |= I2C_MSM_ERR_ARB_LOST;
-
-	if (i2c_status & QUP_BUS_ERROR)
-	    ctrl->xfer.err |= I2C_MSM_ERR_BUS_ERR;
-    }
-
-	/* check for FIFO over/under runs error */
-	if (err_flags & QUP_ERR_FLGS_MASK)
-		ctrl->xfer.err |= I2C_MSM_ERR_OVR_UNDR_RUN;
-
-	/* Reset and bail out on error */
-	if (ctrl->xfer.err) {
-		/* Dump the register values before reset the core */
-		if (ctrl->dbgfs.dbg_lvl >= MSM_DBG)
-			i2c_msm_dbg_qup_reg_dump(ctrl);
-		/*
-		 * HW workaround: when interrupt is level triggerd, more than
-		 * one interrupt may fire in error cases. Thus we reset the
-		 * core immidiatly in the ISR to ward off the next interrupt.
-		 */
-		writel_relaxed(1, ctrl->rsrcs.base + QUP_SW_RESET);
-
-		need_wmb        = true;
-		signal_complete = true;
-		log_event       = true;
-		goto isr_end;
-	}
-
 	/* clear interrupts fields */
 	clr_flds = i2c_status & QUP_MSTR_STTS_ERR_MASK;
 	if (clr_flds) {
