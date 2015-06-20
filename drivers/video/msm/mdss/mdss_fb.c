@@ -1038,13 +1038,14 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
+
+	pr_debug("%pS mode:%d\n", __builtin_return_address(0),
+		blank_mode);
+
 #if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 		if (info->node <= (SUPPORT_PANEL_COUNT - 1))
 					vdd->vdd_blank_mode[info->node] =  blank_mode;
 #endif
-
-	pr_debug("%pS mode:%d\n", __builtin_return_address(0),
-		blank_mode);
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
