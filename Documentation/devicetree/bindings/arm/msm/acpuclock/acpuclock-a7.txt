@@ -12,7 +12,7 @@ Required properties:
 - a7_cpu-supply: regulator to supply a7 cpu
 
 Optional properties:
-- reg-names: "pte_efuse". Registers indicate maximum cpu speed.
+- reg-names: "efuse", "efuse1". Registers indicate maximum cpu speed.
 
 Example:
 	qcom,acpuclk@f9011050 {
