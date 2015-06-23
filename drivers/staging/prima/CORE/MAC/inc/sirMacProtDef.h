@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,11 +38,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/*
-* Copyright (c) 2011-2014 Qualcomm Atheros, Inc.
-* All Rights Reserved.
-* Qualcomm Atheros Confidential and Proprietary.
-*/
+
 
 /*
  * This file sirMacProtDef.h contains the MAC/PHY protocol
@@ -180,20 +176,17 @@
 #define SIR_MAC_ACTION_DLP             2
 #define SIR_MAC_ACTION_BLKACK          3
 #define SIR_MAC_ACTION_PUBLIC_USAGE    4
+#if defined WLAN_FEATURE_VOWIFI
 #define SIR_MAC_ACTION_RRM             5
-#define SIR_MAC_ACTION_FAST_BSS_TRNST  6
+#endif
 #define SIR_MAC_ACTION_HT              7
-#define SIR_MAC_ACTION_SA_QUERY        8
-#define SIR_MAC_ACTION_PROT_DUAL_PUB   9
-#define SIR_MAC_ACTION_WNM            10
-#define SIR_MAC_ACTION_UNPROT_WNM     11
+#ifdef FEATURE_WLAN_TDLS
 #define SIR_MAC_ACTION_TDLS           12
-#define SIR_MAC_ACITON_MESH           13
-#define SIR_MAC_ACTION_MULTIHOP       14
-#define SIR_MAC_SELF_PROTECTED        15
+#endif
 #define SIR_MAC_ACTION_WME            17
+#ifdef WLAN_FEATURE_11AC
 #define SIR_MAC_ACTION_VHT            21
-
+#endif
 
 // QoS management action codes
 
@@ -269,6 +262,7 @@
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
+#define SIR_MAC_ACTION_SA_QUERY          8
 #define SIR_MAC_SA_QUERY_REQ             0
 #define SIR_MAC_SA_QUERY_RSP             1
 #endif
@@ -418,7 +412,6 @@
 #define SIR_MAC_HT_INFO_EID      61
 #define SIR_MAC_HT_INFO_EID_MIN    0
 #define SIR_MAC_HT_INFO_EID_MAX    255
-#define SIR_MAC_OBSS_SCAN_PARAMETERS_EID 74
 
 #ifdef WLAN_FEATURE_11AC
 #define SIR_MAC_VHT_CAPABILITIES_EID   191
@@ -467,9 +460,6 @@
 #define SIR_MAX_NOA_ATTR_LEN        31
 #define SIR_MAX_NOA_DESCR           2
 #define SIR_P2P_IE_HEADER_LEN       6
-
-#define SIR_MAC_CISCO_OUI "\x00\x40\x96"
-#define SIR_MAC_CISCO_OUI_SIZE 3
 
 // min size of wme oui header: oui(3) + type + subtype + version
 #define SIR_MAC_OUI_WME_HDR_MIN       6
@@ -697,9 +687,7 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_SHORT_SLOT_NOT_SUPORTED_STATUS       = 25, //Association denied due to requesting station not supporting the Short Slot Time
                                                         //option
     eSIR_MAC_DSSS_OFDM_NOT_SUPPORTED_STATUS       = 26, //Association denied due to requesting station not supporting the DSSS-OFDM option
-    // reserved                                     27-29
-    eSIR_MAC_TRY_AGAIN_LATER                      = 30, //Association request rejected temporarily, try again later
-    // reserved                                     31
+    // reserved                                     27-31
     eSIR_MAC_QOS_UNSPECIFIED_FAILURE_STATUS       = 32, //Unspecified, QoS-related failure
     eSIR_MAC_QAP_NO_BANDWIDTH_STATUS              = 33, //Association denied because QoS AP has insufficient bandwidth to handle another
                                                         //QoS STA
@@ -2863,32 +2851,4 @@ typedef __ani_attr_pre_packed struct sSirPhy11aHdr
 } __ani_attr_packed tSirPhy11aHdr, *tpSirPhy11aHdr;
 
 #define SIR_MAC_MIN_IE_LEN 2 // Minimum IE length for IE validation
-
-#if defined WLAN_FEATURE_RELIABLE_MCAST
-
-// Reliable Multicast action codes
-#define SIR_MAC_RMC_ENABLE_REQ                  0
-#define SIR_MAC_RMC_DISABLE_REQ                 1
-#define SIR_MAC_RMC_LEADER_INFORM_SELECTED      2
-#define SIR_MAC_RMC_LEADER_INFORM_CANCELLED     3
-
-// Reliable multicast protocol version
-#define SIR_MAC_RMC_VER 0x01
-
-// Organization Identifier
-#define SIR_MAC_RMC_OUI             "\x00\x16\x32"
-#define SIR_MAC_RMC_OUI_SIZE        3
-
-// Magic code for Oxygen network
-#define SIR_MAC_OXYGEN_MAGIC_CODE       "OXYGEN"
-#define SIR_MAC_OXYGEN_MAGIC_CODE_SIZE  6
-
-#define SIR_MAC_RMC_MCAST_ADDRESS  "\x01\x00\x5E\x00\x02\x0A"
-
-#endif /* WLAN_FEATURE_RELIABLE_MCAST */
-
-#define SIR_MAC_TI_TYPE_REASSOC_DEADLINE        1
-#define SIR_MAC_TI_TYPE_KEY_LIFETIME            2
-#define SIR_MAC_TI_TYPE_ASSOC_COMEBACK          3
-
 #endif /* __MAC_PROT_DEFS_H */

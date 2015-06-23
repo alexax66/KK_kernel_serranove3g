@@ -81,7 +81,6 @@
 #include <linux/semaphore.h>
 #include <wlan_hdd_hostapd.h>
 #include <wlan_hdd_softap_tx_rx.h>
-#include <vos_sched.h>
 
 // change logging behavior based upon debug flag
 #ifdef HDD_WMM_DEBUG
@@ -108,7 +107,7 @@
 #define DHCP_DESTINATION_PORT 0x4300
 
 static sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
-#define HDD_WMM_UP_TO_AC_MAP_SIZE 8
+
 const v_U8_t hddWmmUpToAcMap[] = {
    WLANTL_AC_BE,
    WLANTL_AC_BK,
@@ -474,7 +473,7 @@ void hdd_wmm_inactivity_timer_cb( v_PVOID_t pUserData )
     currentTrafficCnt = pAdapter->hdd_stats.hddTxRxStats.txXmitClassifiedAC[pQosContext->acType];
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-            FL("WMM inactivity Timer for AC=%d, currentCnt=%d, prevCnt=%d"),
+            FL("WMM inactivity Timer for AC=%d, currentCnt=%d, prevCnt=%d\n"),
             acType, (int)currentTrafficCnt, (int)pAc->wmmPrevTrafficCnt);
     if (pAc->wmmPrevTrafficCnt == currentTrafficCnt)
     {
@@ -693,7 +692,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
       // Check if the inactivity interval is specified
       if (pCurrentQosInfo && pCurrentQosInfo->inactivity_interval) {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
-                 "%s: Inactivity timer value = %d for AC=%d",
+                 "%s: Inactivity timer value = %d for AC=%d\n",
                  __func__, pCurrentQosInfo->inactivity_interval, acType);
          hdd_wmm_enable_inactivity_timer(pQosContext, pCurrentQosInfo->inactivity_interval);
       }
@@ -843,7 +842,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
 
    case SME_QOS_STATUS_SETUP_NOT_QOS_AP_RSP:
       VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                 "%s: Setup failed, not a QoS AP",
+                 "%s: Setup failed, not a QoS AP\n",
                  __func__);
       if (!HDD_WMM_HANDLE_IMPLICIT == pQosContext->handle)
       {
@@ -1216,7 +1215,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
 
    default:
       VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                 "%s: unexpected SME Status=%d",
+                 "%s: unexpected SME Status=%d\n",
                  __func__, smeStatus );
       VOS_ASSERT(0);
    }
@@ -1496,7 +1495,7 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
 
    default:
       VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                 "%s: unexpected SME Status=%d",
+                 "%s: unexpected SME Status=%d\n",
                  __func__, smeStatus );
       VOS_ASSERT(0);
    }
@@ -1880,7 +1879,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    spin_lock_bh( &pAdapter->staInfo_lock );
    if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[STAId].macAddrSTA, pDestMacAddress))
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                    "%s: Station MAC address does not matching", __func__);
 
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
@@ -1905,14 +1904,7 @@ release_lock:
     spin_unlock_bh( &pAdapter->staInfo_lock );
 done:
    skb->priority = up;
-   if(skb->priority < SME_QOS_WMM_UP_MAX)
-         queueIndex = hddLinuxUpToAcMap[skb->priority];
-   else
-   {
-       VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
-                 "%s: up=%d is going beyond max value", __func__, up);
-      queueIndex = hddLinuxUpToAcMap[SME_QOS_WMM_UP_BE];
-   }
+   queueIndex = hddLinuxUpToAcMap[skb->priority];
 
    return queueIndex;
 }
@@ -1934,13 +1926,6 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
    v_USHORT_t queueIndex;
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
 
-   if (isWDresetInProgress()) {
-       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                  FL("called during WDReset"));
-       skb->priority = SME_QOS_WMM_UP_BE;
-       return HDD_LINUX_AC_BE;
-   }
-
    /*Get the Station ID*/
    if (WLAN_HDD_IBSS == pAdapter->device_mode)
    {
@@ -1951,16 +1936,12 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
             hdd_Ibss_GetStaId(&pAdapter->sessionCtx.station,
                                pDestMacAddress, pSTAId))
        {
-          *pSTAId = HDD_WLAN_INVALID_STA_ID;
-          if ( !vos_is_macaddr_broadcast( pDestMacAddress ) &&
-                             !vos_is_macaddr_group(pDestMacAddress))
-          {
-              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                      "%s: Failed to find right station pDestMacAddress: "
                      MAC_ADDRESS_STR , __func__,
                      MAC_ADDR_ARRAY(pDestMacAddress->bytes));
-              goto done;
-          }
+          *pSTAId = HDD_WLAN_INVALID_STA_ID;
+          goto done;
        }
    }
    // if we don't want QoS or the AP doesn't support Qos
@@ -1972,22 +1953,14 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
       if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
       {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
-                   "%s: BestEffort Tx Queue is 3/4th full"
-                   " Make DHCP packet's pri as VO", __func__);
+                   "%s: Making priority of DHCP packet as VOICE", __func__);
          up = SME_QOS_WMM_UP_VO;
          ac = hddWmmUpToAcMap[up];
       }
    }
 done:
    skb->priority = up;
-   if(skb->priority < SME_QOS_WMM_UP_MAX)
-         queueIndex = hddLinuxUpToAcMap[skb->priority];
-   else
-   {
-       VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
-                 "%s: up=%d is going beyond max value", __func__, up);
-      queueIndex = hddLinuxUpToAcMap[SME_QOS_WMM_UP_BE];
-   }
+   queueIndex = hddLinuxUpToAcMap[skb->priority];
 
    return queueIndex;
 }
@@ -2280,8 +2253,6 @@ VOS_STATUS hdd_wmm_connect( hdd_adapter_t* pAdapter,
    }
    else
    {
-      /* TODO: if a non-qos IBSS peer joins the group make qap and qosConnection false.
-       */
       qap = VOS_TRUE;
       qosConnection = VOS_TRUE;
       acmMask = 0x0;
@@ -2475,7 +2446,7 @@ hdd_wlan_wmm_status_e hdd_wmm_addts( hdd_adapter_t* pAdapter,
         default:
           // we didn't get back one of the SME_QOS_STATUS_MODIFY_* status codes
           VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                     "%s: unexpected SME Status=%d", __func__, smeStatus );
+                     "%s: unexpected SME Status=%d\n", __func__, smeStatus );
           VOS_ASSERT(0);
           return HDD_WLAN_WMM_STATUS_MODIFY_FAILED;
       }
@@ -2497,16 +2468,7 @@ hdd_wlan_wmm_status_e hdd_wmm_addts( hdd_adapter_t* pAdapter,
    // we assume the tspec has already been validated by the caller
 
    pQosContext->handle = handle;
-   if (pTspec->ts_info.up < HDD_WMM_UP_TO_AC_MAP_SIZE)
-      pQosContext->acType = hddWmmUpToAcMap[pTspec->ts_info.up];
-   else {
-      VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                "%s: ts_info.up (%d) larger than max value (%d), "
-                "use default acType (%d)",
-                __func__, pTspec->ts_info.up,
-                HDD_WMM_UP_TO_AC_MAP_SIZE - 1, hddWmmUpToAcMap[0]);
-      pQosContext->acType = hddWmmUpToAcMap[0];
-   }
+   pQosContext->acType = hddWmmUpToAcMap[pTspec->ts_info.up];
    pQosContext->pAdapter = pAdapter;
    pQosContext->qosFlowId = 0;
    pQosContext->magic = HDD_WMM_CTX_MAGIC;
@@ -2562,7 +2524,7 @@ hdd_wlan_wmm_status_e hdd_wmm_addts( hdd_adapter_t* pAdapter,
       // we didn't get back one of the SME_QOS_STATUS_SETUP_* status codes
       hdd_wmm_free_context(pQosContext);
       VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                 "%s: unexpected SME Status=%d", __func__, smeStatus );
+                 "%s: unexpected SME Status=%d\n", __func__, smeStatus );
       VOS_ASSERT(0);
       return HDD_WLAN_WMM_STATUS_SETUP_FAILED;
    }
@@ -2673,7 +2635,7 @@ hdd_wlan_wmm_status_e hdd_wmm_delts( hdd_adapter_t* pAdapter,
    default:
       // we didn't get back one of the SME_QOS_STATUS_RELEASE_* status codes
       VOS_TRACE( VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_ERROR,
-                 "%s: unexpected SME Status=%d", __func__, smeStatus );
+                 "%s: unexpected SME Status=%d\n", __func__, smeStatus );
       VOS_ASSERT(0);
       status = HDD_WLAN_WMM_STATUS_RELEASE_FAILED;
    }

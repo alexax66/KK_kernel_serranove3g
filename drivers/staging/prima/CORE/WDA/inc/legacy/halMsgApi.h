@@ -873,11 +873,13 @@ typedef struct
     tANI_U16 paramChangeBitmap;
 }tUpdateBeaconParams, *tpUpdateBeaconParams;
 
+#ifdef WLAN_FEATURE_11AC
 typedef struct 
 {
    tANI_U16   opMode;
    tANI_U16  staId;
 }tUpdateVHTOpMode, *tpUpdateVHTOpMode;
+#endif
 
 //HAL MSG: SIR_HAL_UPDATE_CF_IND
 typedef struct
@@ -922,15 +924,6 @@ typedef struct
 }tUpdateDtimParams, *tpUpdateDtimParams;
 */
 
-typedef enum
-{
-    eHAL_CHANNEL_SWITCH_SOURCE_SCAN,
-    eHAL_CHANNEL_SWITCH_SOURCE_LISTEN,
-    eHAL_CHANNEL_SWITCH_SOURCE_MCC,
-    eHAL_CHANNEL_SWITCH_SOURCE_CSA,
-    eHAL_CHANNEL_SWITCH_SOURCE_MAX = 0x7fffffff
-} eHalChanSwitchSource;
-
 
 //HAL MSG: SIR_HAL_CHNL_SWITCH_REQ
 typedef struct
@@ -947,8 +940,6 @@ typedef struct
     tSirMacAddr selfStaMacAddr;
                         //the request has power constraints, this should be applied only to that session
 #endif
-    eHalChanSwitchSource channelSwitchSrc;
-
     /* VO Wifi comment: BSSID is needed to identify which session issued this request. As the 
        request has power constraints, this should be applied only to that session */
     /* V IMP: Keep bssId field at the end of this msg. It is used to mantain backward compatbility
@@ -1310,12 +1301,6 @@ typedef struct sMaxTxPowerParams
     //power == tx power used for management frames.
     tPowerdBm  power;
 }tMaxTxPowerParams, *tpMaxTxPowerParams;
-
-typedef struct sMaxTxPowerPerBandParams
-{
-    eCsrBand   bandInfo;
-    tPowerdBm  power;
-}tMaxTxPowerPerBandParams, *tpMaxTxPowerPerBandParams;
 
 typedef struct sAddStaSelfParams
 {

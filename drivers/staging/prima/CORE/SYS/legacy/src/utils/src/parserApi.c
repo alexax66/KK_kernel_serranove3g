@@ -944,32 +944,11 @@ PopulateDot11fVHTExtBssLoad(tpAniSirGlobal      pMac,
 
 tSirRetStatus
 PopulateDot11fExtCap(tpAniSirGlobal      pMac,
-                           tDot11fIEExtCap  *pDot11f,
-                           tpPESession   psessionEntry)
+                           tDot11fIEExtCap  *pDot11f)
 {
-    tANI_U32            val;
-
-#ifdef WLAN_FEATURE_11AC
-    if (psessionEntry->vhtCapability)
-    {
-        pDot11f->operModeNotification = 1;
-        pDot11f->present = 1;
-    }
-#endif
-       /* while operating in 2.4GHz only then STA need to advertize
-               the bss co-ex capability*/
-    if (psessionEntry->currentOperChannel <= RF_CHAN_14)
-    {
-       if (wlan_cfgGetInt(pMac, WNI_CFG_CHANNEL_BONDING_24G, &val) !=
-                         eSIR_SUCCESS)
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve "
-                                         "24G Chan bond Length \n"));)
-       if (TRUE == val)
-       {
-           pDot11f->bssCoexistMgmtSupport = 1;
-           pDot11f->present = 1;
-       }
-    }
+    pDot11f->present = 1;
+    pDot11f->operModeNotification = 1;
+    
     return eSIR_SUCCESS;
 }
 
@@ -1577,7 +1556,6 @@ void PopulateDot11fReAssocTspec(tpAniSirGlobal pMac, tDot11fReAssocRequest *pRea
     if (numTspecs) {
         for (idx=0; idx<numTspecs; idx++) {
             PopulateDot11fWMMTSPEC(&pTspec->tspec, &pReassoc->WMMTSPEC[idx]);
-            pTspec->tspec.mediumTime = 0;
             pTspec++;
         }
     }
@@ -1859,62 +1837,6 @@ sirConvertProbeReqFrame2Struct(tpAniSirGlobal  pMac,
     return eSIR_SUCCESS;
 
 } // End sirConvertProbeReqFrame2Struct.
-
-/* function ValidateAndRectifyIEs checks for the malformed frame.
- * The frame would contain fixed IEs of 12 bytes follwed by Variable IEs
- * (Tagged elements).
- * Every Tagged IE has tag number, tag length and data. Tag length indicates
- * the size of data in bytes.
- * This function checks for size of Frame recived with the sum of all IEs.
- * And also rectifies missing optional fields in IE.
- *
- * NOTE : Presently this function rectifies RSN capability in RSN IE, can
- * extended to rectify other optional fields in other IEs.
- *
- */
-tSirRetStatus ValidateAndRectifyIEs(tpAniSirGlobal pMac,
-                                    tANI_U8 *pMgmtFrame,
-                                    tANI_U32 nFrameBytes,
-                                    tANI_U32 *nMissingRsnBytes)
-{
-    tANI_U32 length = SIZE_OF_FIXED_PARAM;
-    tANI_U8 *refFrame;
-
-    // Frame contains atleast one IE
-    if (nFrameBytes > (SIZE_OF_FIXED_PARAM + 2))
-    {
-        while (length < nFrameBytes)
-        {
-            /*refFrame points to next IE */
-            refFrame = pMgmtFrame + length;
-            length += (tANI_U32)(SIZE_OF_TAG_PARAM_NUM + SIZE_OF_TAG_PARAM_LEN
-                                 + (*(refFrame + SIZE_OF_TAG_PARAM_NUM)));
-        }
-        if (length != nFrameBytes)
-        {
-            /* Workaround : Some APs may not include RSN Capability but
-             * the length of which is included in RSN IE length.
-             * this may cause in updating RSN Capability with junk value.
-             * To avoid this, add RSN Capability value with default value.
-             * Going further we can have such workaround for other IEs
-             */
-            if ((*refFrame == RSNIEID) &&
-                (length == (nFrameBytes + RSNIE_CAPABILITY_LEN)))
-            {
-                //Assume RSN Capability as 00
-                vos_mem_set( ( tANI_U8* ) (pMgmtFrame + (nFrameBytes)),
-                             RSNIE_CAPABILITY_LEN, DEFAULT_RSNIE_CAP_VAL );
-                *nMissingRsnBytes = RSNIE_CAPABILITY_LEN;
-                limLog(pMac, LOG1,
-                       FL("Added RSN Capability to the RSNIE as 0x00 0x00\n"));
-
-                return eHAL_STATUS_SUCCESS;
-            }
-            return eSIR_FAILURE;
-        }
-    }
-    return eHAL_STATUS_SUCCESS;
-}
 
 tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
                                           tANI_U8             *pFrame,
@@ -2522,11 +2444,7 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
         limLogVHTOperation(pMac, &pAssocRsp->VHTOperation);
     }
 #endif
-    if(ar.OBSSScanParameters.present)
-    {
-       vos_mem_copy( &pAssocRsp->OBSSScanParameters, &ar.OBSSScanParameters,
-                      sizeof( tDot11fIEOBSSScanParameters));
-    }
+
     return eSIR_SUCCESS;
 
 } // End sirConvertAssocRespFrame2Struct.
@@ -3547,12 +3465,7 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
                       sizeof( tDot11fIEWiderBWChanSwitchAnn));
     }      
 #endif
-    if(pBeacon->OBSSScanParameters.present)
-    {
-       vos_mem_copy( &pBeaconStruct->OBSSScanParameters,
-                     &pBeacon->OBSSScanParameters,
-                     sizeof( tDot11fIEOBSSScanParameters));
-    }
+
     vos_mem_free(pBeacon);
     return eSIR_SUCCESS;
 
@@ -5173,14 +5086,5 @@ void PopulateDot11fAssocRspRates ( tpAniSirGlobal pMac, tDot11fIESuppRates *pSup
      pExt->num_rates = num_ext;
      pExt->present = 1;
   }
-}
-
-void PopulateDot11fTimeoutInterval( tpAniSirGlobal pMac,
-                                    tDot11fIETimeoutInterval *pDot11f,
-                                    tANI_U8 type, tANI_U32 value )
-{
-   pDot11f->present = 1;
-   pDot11f->timeoutType = type;
-   pDot11f->timeoutValue = value;
-}
+} 
 // parserApi.c ends here.

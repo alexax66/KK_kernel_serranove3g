@@ -66,13 +66,6 @@
 #define IS_24G_CH(__chNum) ((__chNum > 0) && (__chNum < 14))
 #define IS_5G_CH(__chNum) ((__chNum >= 36) && (__chNum <= 165))
 
-#define SIZE_OF_FIXED_PARAM 12
-#define SIZE_OF_TAG_PARAM_NUM 1
-#define SIZE_OF_TAG_PARAM_LEN 1
-#define RSNIEID 0x30
-#define RSNIE_CAPABILITY_LEN 2
-#define DEFAULT_RSNIE_CAP_VAL 0x00
-
 typedef struct sSirCountryInformation
 {
     tANI_U8 countryString[COUNTRY_STRING_LENGTH];
@@ -160,7 +153,7 @@ typedef struct sSirProbeRespBeacon
     tANI_U8                   WiderBWChanSwitchAnnPresent;
     tDot11fIEWiderBWChanSwitchAnn WiderBWChanSwitchAnn;
 #endif
-    tDot11fIEOBSSScanParameters OBSSScanParameters;
+
 } tSirProbeRespBeacon, *tpSirProbeRespBeacon;
 
 // probe Request structure
@@ -283,7 +276,6 @@ typedef struct sSirAssocRsp
     tDot11fIEVHTCaps          VHTCaps;
     tDot11fIEVHTOperation     VHTOperation;
 #endif
-    tDot11fIEOBSSScanParameters OBSSScanParameters;
 } tSirAssocRsp, *tpSirAssocRsp;
 
 #if defined(FEATURE_WLAN_CCX_UPLOAD)
@@ -893,8 +885,7 @@ tSirRetStatus
 PopulateDot11fVHTExtBssLoad(tpAniSirGlobal  pMac, tDot11fIEVHTExtBssLoad   *pDot11f);
 
 tSirRetStatus
-PopulateDot11fExtCap(tpAniSirGlobal pMac, tDot11fIEExtCap * pDot11f,
-                            tPESession *sessionEntry);
+PopulateDot11fExtCap(tpAniSirGlobal pMac, tDot11fIEExtCap * pDot11f);
 
 tSirRetStatus
 PopulateDot11fOperatingMode(tpAniSirGlobal pMac, tDot11fIEOperatingMode *pDot11f, tpPESession psessionEntry );
@@ -904,12 +895,3 @@ PopulateDot11fWiderBWChanSwitchAnn(tpAniSirGlobal pMac,
                                    tDot11fIEWiderBWChanSwitchAnn *pDot11f,
                                    tpPESession psessionEntry);
 #endif
-
-void PopulateDot11fTimeoutInterval( tpAniSirGlobal pMac,
-                                    tDot11fIETimeoutInterval *pDot11f,
-                                    tANI_U8 type, tANI_U32 value );
-
-tSirRetStatus ValidateAndRectifyIEs(tpAniSirGlobal pMac,
-                                    tANI_U8 *pMgmtFrame,
-                                    tANI_U32 nFrameBytes,
-                                    tANI_U32 *nMissingRsnBytes);

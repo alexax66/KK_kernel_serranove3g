@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -94,6 +94,7 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     /* here is it required to increment session specific heartBeat beacon counter */  
 
 
+    
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
 
 
@@ -138,13 +139,10 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                    FL("Received invalid Beacon in state %X"),
                    psessionEntry->limMlmState);
             limPrintMlmState(pMac, LOGW,  psessionEntry->limMlmState);
-            if ((!psessionEntry->currentBssBeaconCnt) &&
-               (sirCompareMacAddr( psessionEntry->bssId, pHdr->sa)))
-                limParseBeaconForTim(pMac, (tANI_U8 *) pRxPacketInfo, psessionEntry);
-
             vos_mem_free(pBeacon);
             return;
         }
+
         /*during scanning, when any session is active, and beacon/Pr belongs to
           one of the session, fill up the following, TBD - HB couter */
         if ((!psessionEntry->lastBeaconDtimPeriod) &&
@@ -312,8 +310,7 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     } // end of (eLIM_MLM_WT_PROBE_RESP_STATE) || (eLIM_MLM_PASSIVE_SCAN_STATE)
     else
     {
-        limLog(pMac, LOG1, FL("Rcvd Beacon in unexpected MLM state %s (%d)"),
-               limMlmStateStr(pMac->lim.gLimMlmState), pMac->lim.gLimMlmState);
+        limLog(pMac, LOG1, FL("Rcvd Beacon in unexpected MLM state %d"), pMac->lim.gLimMlmState);
         limPrintMlmState(pMac, LOG1, pMac->lim.gLimMlmState);
 #ifdef WLAN_DEBUG                    
         pMac->lim.gLimUnexpBcnCnt++;

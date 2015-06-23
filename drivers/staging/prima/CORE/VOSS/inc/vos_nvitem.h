@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -62,7 +62,6 @@
 #include "vos_types.h"
 #include "vos_status.h"
 #include "wlan_nv.h"
-#include "wlan_nv2.h"
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -131,6 +130,7 @@ ADD_VNV_ITEM( VNV_TABLE_VIRTUAL_RATE, 1, 4, VNV_TABLE_VIRTUAL_RATE_I ) \
  * to esp_dpp.h where the WLAN_PROVISION_DATA is present.
  */
 #define CLPC_PROVISION_DATA L"WLAN_CLPC.PROVISION"
+
 /*--------------------------------------------------------------------------
   Type declarations
   ------------------------------------------------------------------------*/
@@ -196,14 +196,6 @@ typedef enum
 }
 v_CountryInfoSource_t;
 
-//enum of NV version
-typedef enum
-{
-   E_NV_V2,
-   E_NV_V3,
-   E_NV_INVALID
-} eNvVersionType;
-
 // enum of supported NV items in VOSS
 typedef enum
 {
@@ -223,8 +215,6 @@ typedef v_U8_t v_MAC_ADDRESS_t[VOS_MAC_ADDRESS_LEN];
 /*-------------------------------------------------------------------------
   Function declarations and documenation
   ------------------------------------------------------------------------*/
-
-const char * voss_DomainIdtoString(const v_U8_t domainIdCurrent);
 /**------------------------------------------------------------------------
 
   \brief vos_nv_init() - initialize the NV module
@@ -710,12 +700,10 @@ VOS_STATUS vos_nv_get_dictionary_data(void);
   \brief vos_nv_setRegDomain -
   \param clientCtxt  - Client Context, Not used for PRIMA
               regId  - Regulatory Domain ID
-              sendRegHint - send hint to cfg80211
   \return status set REG domain operation
   \sa
   -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
-                                                  v_BOOL_t sendRegHint);
+VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
 
 /**------------------------------------------------------------------------
   \brief vos_nv_getChannelEnabledState -
@@ -733,39 +721,4 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 );
 
 VOS_STATUS vos_init_wiphy_from_nv_bin(void);
-
-/**------------------------------------------------------------------------
-  \brief vos_nv_getNvVersion -
-  \param NONE
-  \return eNvVersionType NV.bin version
-             * E_NV_V2
-             * E_NV_V3
-             * E_NV_INVALID
-  \sa
-  -------------------------------------------------------------------------*/
-eNvVersionType vos_nv_getNvVersion
-(
-   void
-);
-
-
-/**------------------------------------------------------------------------
-  \brief vos_chan_to_freq -
-  \param   - input channel number to know channel frequency
-  \return Channel frequency
-  \sa
-  -------------------------------------------------------------------------*/
-v_U16_t vos_chan_to_freq(v_U8_t chanNum);
-
-/**------------------------------------------------------------------------
-  \brief vos_is_nv_country_non_zero -
-  \param   NONE
-  \return Success if default Country is Non-Zero
-  \sa
-  -------------------------------------------------------------------------*/
-
-v_BOOL_t vos_is_nv_country_non_zero
-(
-   void
-);
 #endif // __VOS_NVITEM_H

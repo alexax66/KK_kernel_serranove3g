@@ -181,21 +181,6 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) "),
                                 pMsg->staId, pMsg->assocId);)
 
-                    if( pMac->roam.configParam.sendDeauthBeforeCon )
-                    {
-                       tANI_U8 apCount = pMac->lim.gLimHeartBeatApMacIndex;
-
-                       if(pMac->lim.gLimHeartBeatApMacIndex)
-                          pMac->lim.gLimHeartBeatApMacIndex = 0;
-                       else
-                          pMac->lim.gLimHeartBeatApMacIndex = 1;
-
-                       limLog(pMac, LOG1, FL("lim Delete Station Context for MAC "
-                                          MAC_ADDRESS_STR" Store it on Index %d"),
-                                          MAC_ADDR_ARRAY(pStaDs->staAddr),apCount);
-
-                       sirCopyMacAddr(pMac->lim.gLimHeartBeatApMac[apCount],pStaDs->staAddr);
-                    }
                     pStaDs->mlmStaContext.disassocReason = eSIR_MAC_UNSPEC_FAILURE_REASON;
                     pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 
@@ -206,6 +191,14 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
 #ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+                    if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+                        (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                            limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+                            vos_mem_free(pMsg);
+                            return ;
+                    }
+#endif
                     /* Delete all TDLS peers connected before leaving BSS*/
                     limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
@@ -387,6 +380,13 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
         tLimMlmDeauthInd  mlmDeauthInd;
 
 #ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+        if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+            (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+                return;
+        }
+#endif
         /* Delete all TDLS peers connected before leaving BSS*/
         limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
@@ -398,27 +398,6 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
         vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
                       pStaDs->staAddr,
                       sizeof(tSirMacAddr));
-        /* if sendDeauthBeforeCon is enabled and reasoncode is Beacon Missed
-         * Store the MAC of AP in the flip flop buffer. This MAC will be
-         * used to send Deauth before connection, if we connect to same AP
-         * after HB failure.
-         */
-        if(pMac->roam.configParam.sendDeauthBeforeCon &&
-            eSIR_BEACON_MISSED == reasonCode)
-        {
-           int apCount = pMac->lim.gLimHeartBeatApMacIndex;
-
-           if(pMac->lim.gLimHeartBeatApMacIndex)
-              pMac->lim.gLimHeartBeatApMacIndex = 0;
-           else
-              pMac->lim.gLimHeartBeatApMacIndex = 1;
-
-           limLog(pMac, LOGE, FL("HB Failure on MAC "
-                 MAC_ADDRESS_STR" Store it on Index %d"),
-                   MAC_ADDR_ARRAY(pStaDs->staAddr),apCount);
-
-           sirCopyMacAddr(pMac->lim.gLimHeartBeatApMac[apCount],pStaDs->staAddr);
-        }
         mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
         mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
@@ -473,7 +452,31 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     /* Ensure HB Status for the session has been reseted */
     psessionEntry->LimHBFailureStatus = eANI_BOOLEAN_FALSE;
+    /** Re Activate Timer if the system is Waiting for ReAssoc Response*/
+    if(((psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) || 
+        (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||
+        (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)) && 
+       (LIM_IS_CONNECTION_ACTIVE(psessionEntry) ||
+        (limIsReassocInProgress(pMac, psessionEntry))))
+    {
+        if(psessionEntry->LimRxedBeaconCntDuringHB < MAX_NO_BEACONS_PER_HEART_BEAT_INTERVAL)
+            pMac->lim.gLimHeartBeatBeaconStats[psessionEntry->LimRxedBeaconCntDuringHB]++;
+        else
+            pMac->lim.gLimHeartBeatBeaconStats[0]++;
 
+        /****** 
+         * Note: Use this code once you have converted all  
+         * limReactivateHeartBeatTimer() calls to 
+         * limReactivateTimer() calls.
+         * 
+         ******/
+        //limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER, psessionEntry);
+        limReactivateHeartBeatTimer(pMac, psessionEntry);
+
+        // Reset number of beacons received
+        limResetHBPktCount(psessionEntry);
+        return;
+    }
     if (((psessionEntry->limSystemRole == eLIM_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))&&
          (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE))
     {
@@ -494,8 +497,6 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
         {
             /*** Detected continuous Beacon Misses ***/
              psessionEntry->LimHBFailureStatus= eANI_BOOLEAN_TRUE;
-             /*Reset the HB packet count before sending probe*/
-             limResetHBPktCount(psessionEntry);
             /**
              * Send Probe Request frame to AP to see if
              * it is still around. Wait until certain
@@ -517,7 +518,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
             }
             /* Connected on DFS channel so should not send the probe request
             * tear down the link directly */
-            limTearDownLinkWithAp(pMac, psessionEntry->peSessionId, eSIR_BEACON_MISSED);
+            limTearDownLinkWithAp(pMac, psessionEntry->peSessionId, eSIR_MAC_UNSPEC_FAILURE_REASON);
         }
     }
     else

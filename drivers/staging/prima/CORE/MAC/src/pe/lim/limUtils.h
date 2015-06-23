@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -68,7 +68,6 @@ typedef enum
 #define LIM_STA_ID_MASK                        0x00FF
 #define LIM_AID_MASK                              0xC000
 #define LIM_SPECTRUM_MANAGEMENT_BIT_MASK          0x0100
-#define LIM_RRM_BIT_MASK                          0x1000
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 #define LIM_MAX_REASSOC_RETRY_LIMIT            2
 #endif
@@ -98,18 +97,6 @@ typedef struct sAddBaCandidate
     tSirMacAddr staAddr;
     tAddBaInfo baInfo[STACFG_MAX_TC];
 }tAddBaCandidate, *tpAddBaCandidate;
-
-#ifdef WLAN_FEATURE_11W
-typedef union uPmfSaQueryTimerId
-{
-    struct
-    {
-        tANI_U8 sessionId;
-        tANI_U16 peerIdx;
-    } fields;
-    tANI_U32 value;
-} tPmfSaQueryTimerId, *tpPmfSaQueryTimerId;
-#endif
 
 // LIM utility functions
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);
@@ -200,8 +187,7 @@ tSirRetStatus limStartChannelSwitch(tpAniSirGlobal pMac, tpPESession psessionEnt
 void limUpdateChannelSwitch(tpAniSirGlobal, tpSirProbeRespBeacon, tpPESession psessionEntry);
 void limProcessQuietTimeout(tpAniSirGlobal);
 void limProcessQuietBssTimeout(tpAniSirGlobal);
-void limInitOBSSScanParams(tpAniSirGlobal pMac,
-                                   tpPESession psessionEntry);
+
 #if 0
 void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac);
 #endif
@@ -411,14 +397,10 @@ tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel);
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);
 
 #ifdef WLAN_FEATURE_11AC
-tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac,
+tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, 
                                       tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId);
 #endif
-tANI_BOOLEAN limCheckHTChanBondModeChange(tpAniSirGlobal pMac,
-                                                  tpPESession psessionEntry,
-                                                  tANI_U8 beaconSecChanWidth,
-                                                  tANI_U8 currentSecChanWidth,
-                                                  tANI_U8 staId);
+
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 
 typedef enum
@@ -518,25 +500,4 @@ void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac, tANI_U8 *staMac, tANI_BOOL
 
 tANI_BOOLEAN limCheckDisassocDeauthAckPending(tpAniSirGlobal pMac, tANI_U8 *staMac);
 
-
-void limUtilsframeshtons(tpAniSirGlobal  pCtx,
-                            tANI_U8  *pOut,
-                            tANI_U16  pIn,
-                            tANI_U8  fMsb);
-
-void limUtilsframeshtonl(tpAniSirGlobal  pCtx,
-                            tANI_U8  *pOut,
-                            tANI_U32  pIn,
-                            tANI_U8  fMsb);
-
-void limUpdateOBSSScanParams(tpPESession psessionEntry ,
-             tDot11fIEOBSSScanParameters *pOBSSScanParameters);
-
-#ifdef WLAN_FEATURE_11W
-void limPmfSaQueryTimerHandler(void *pMacGlobal, tANI_U32 param);
-#endif
-void limParseBeaconForTim(tpAniSirGlobal pMac, tANI_U8* pRxPacketInfo,
-                          tpPESession psessionEntry);
-
-void limDecrementPendingMgmtCount (tpAniSirGlobal pMac);
 #endif /* __LIM_UTILS_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -176,7 +176,7 @@ enum eSirHostMsgTypes
 enum {
     SIR_BOOT_MODULE_ID = 1,
     SIR_HAL_MODULE_ID  = 0x10,
-    SIR_CFG_MODULE_ID = 0x12,
+    SIR_CFG_MODULE_ID,
     SIR_LIM_MODULE_ID,
     SIR_ARQ_MODULE_ID,
     SIR_SCH_MODULE_ID,
@@ -216,6 +216,7 @@ typedef enum eSirScanType
     eSIR_BEACON_TABLE,
 } tSirScanType;
 
+/// Result codes Firmware return to Host SW
 typedef enum eSirResultCodes
 {
     eSIR_SME_SUCCESS,
@@ -254,7 +255,6 @@ typedef enum eSirResultCodes
     eSIR_SME_BSS_ALREADY_STARTED_OR_JOINED,
     eSIR_SME_LOST_LINK_WITH_PEER_RESULT_CODE,
     eSIR_SME_REFUSED,
-    eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA,
     eSIR_SME_JOIN_TIMEOUT_RESULT_CODE,
     eSIR_SME_AUTH_TIMEOUT_RESULT_CODE,
     eSIR_SME_ASSOC_TIMEOUT_RESULT_CODE,
@@ -354,7 +354,6 @@ typedef enum eSirResultCodes
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
     eSIR_SME_GTK_OFFLOAD_GETINFO_REQ_FAILED,
 #endif // WLAN_FEATURE_GTK_OFFLOAD
-    eSIR_SME_DEAUTH_STATUS,
     eSIR_DONOT_USE_RESULT_CODE = SIR_MAX_ENUM_SIZE    
 } tSirResultCodes;
 
@@ -380,9 +379,6 @@ typedef enum eStaRateMode {
 #define IERATE_IS_BASICRATE(x)   ((x) & IERATE_BASICRATE_MASK)
 #define ANIENHANCED_TAURUS_RATEMAP_BITOFFSET_START  28
 
-const char * lim_BssTypetoString(const v_U8_t bssType);
-const char * lim_ScanTypetoString(const v_U8_t scanType);
-const char * lim_BackgroundScanModetoString(const v_U8_t mode);
 typedef struct sSirSupportedRates {
     /*
     * For Self STA Entry: this represents Self Mode.
@@ -469,15 +465,6 @@ typedef struct sSirRemainOnChnReq
     tANI_U8  isProbeRequestAllowed;
     tANI_U8  probeRspIe[1];
 }tSirRemainOnChnReq, *tpSirRemainOnChnReq;
-
-/* Structure for vendor specific IE of debug marker frame
-   to debug remain on channel issues */
-typedef struct publicVendorSpecific
-{
-    tANI_U8 category;
-    tANI_U8 elementid;
-    tANI_U8 length;
-} publicVendorSpecific;
 
 typedef struct sSirRegisterMgmtFrame
 {
@@ -675,11 +662,6 @@ typedef struct sSirSmeStartBssReq
     tSirMacRateSet          operationalRateSet;// Has 11a or 11b rates
     tSirMacRateSet          extendedRateSet;    // Has 11g rates
 
-#ifdef WLAN_FEATURE_11W
-    tANI_BOOLEAN            pmfCapable;
-    tANI_BOOLEAN            pmfRequired;
-#endif
-
 } tSirSmeStartBssReq, *tpSirSmeStartBssReq;
 
 #define GET_IE_LEN_IN_BSS(lenInBss) ( lenInBss + sizeof(lenInBss) - \
@@ -792,6 +774,8 @@ typedef enum eSirBackgroundScanMode
     eSIR_NORMAL_BACKGROUND_SCAN = 1,
     eSIR_ROAMING_SCAN = 2,
 } tSirBackgroundScanMode;
+
+/// Two types of traffic check
 typedef enum eSirLinkTrafficCheck
 {
     eSIR_DONT_CHECK_LINK_TRAFFIC_BEFORE_SCAN = 0,
@@ -923,7 +907,6 @@ typedef struct sSirSmeScanReq
 typedef struct sSirOemDataReq
 {
     tANI_U16              messageType; //eWNI_SME_OEM_DATA_REQ
-    tANI_U16              messageLen;
     tSirMacAddr           selfMacAddr;
     tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
 } tSirOemDataReq, *tpSirOemDataReq;
@@ -1118,9 +1101,6 @@ typedef struct sSirSmeJoinRsp
 
     /*Broadcast DPU signature*/
     tANI_U8            bcastSig;
-
-    /*to report MAX link-speed populate rate-flags from ASSOC RSP frame*/
-    tANI_U32           maxRateFlags;
 
     tANI_U8         frames[ 1 ];
 } tSirSmeJoinRsp, *tpSirSmeJoinRsp;
@@ -2236,7 +2216,6 @@ typedef struct sAniChangeCountryCodeReq
     tANI_U16                msgLen;     // length of the entire request
     tANI_U8                 countryCode[WNI_CFG_COUNTRY_CODE_LEN];   //3 char country code
     tAniBool                countryFromUserSpace;
-    tAniBool                sendRegHint;  //TRUE if we want to send hint to NL80211
     void                    *changeCCCallback;
     void                    *pDevContext; //device context
     void                    *pVosContext; //voss context
@@ -3396,17 +3375,6 @@ typedef struct sSirChangeBIParams
     tANI_U8        sessionId;      // Session ID
 } tSirChangeBIParams, *tpSirChangeBIParams;
 
-typedef struct sSirOBSSHT40Param
-{
-   tANI_U16 OBSSScanPassiveDwellTime;
-   tANI_U16 OBSSScanActiveDwellTime;
-   tANI_U16 BSSChannelWidthTriggerScanInterval;
-   tANI_U16 OBSSScanPassiveTotalPerChannel;
-   tANI_U16 OBSSScanActiveTotalPerChannel;
-   tANI_U16 BSSWidthChannelTransitionDelayFactor;
-   tANI_U16 OBSSScanActivityThreshold;
-}tSirOBSSHT40Param, *tpOBSSHT40Param;
-
 #define SIR_WPS_UUID_LEN 16
 #define SIR_WPS_PBC_WALK_TIME   120  // 120 Second
 
@@ -3455,7 +3423,7 @@ typedef struct sSirUpdateAPWPARSNIEsReq
 } tSirUpdateAPWPARSNIEsReq, *tpSirUpdateAPWPARSNIEsReq;
 
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-#define SIR_ROAM_MAX_CHANNELS            80
+#define SIR_ROAM_MAX_CHANNELS            NUM_RF_CHANNELS
 #define SIR_ROAM_SCAN_MAX_PB_REQ_SIZE    450
 #define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
 #define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
@@ -3463,30 +3431,7 @@ typedef struct sSirUpdateAPWPARSNIEsReq
 #define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
 #define SIR_ROAM_SCAN_24G_DEFAULT_CH     1
 #define SIR_ROAM_SCAN_5G_DEFAULT_CH      36
-
-/*Adaptive Thresholds to be used for FW based scanning*/
-#define LFR_SENSITIVITY_THR_1MBPS             -89
-#define LFR_LOOKUP_THR_1MBPS                  -78
-#define LFR_SENSITIVITY_THR_2MBPS             -87
-#define LFR_LOOKUP_THR_2MBPS                  -78
-#define LFR_SENSITIVITY_THR_5_5MBPS           -86
-#define LFR_LOOKUP_THR_5_5MBPS                -77
-#define LFR_SENSITIVITY_THR_11MBPS            -85
-#define LFR_LOOKUP_THR_11MBPS                 -76
-#define LFR_SENSITIVITY_THR_6MBPS_2G          -83
-#define LFR_LOOKUP_THR_6MBPS_2G               -78
-#define LFR_SENSITIVITY_THR_6MBPS_5G          -83
-#define LFR_LOOKUP_THR_6MBPS_5G               -78
-#define LFR_SENSITIVITY_THR_12MBPS_2G         -83
-#define LFR_LOOKUP_THR_12MBPS_2G              -78
-#define LFR_SENSITIVITY_THR_12MBPS_5G         -81
-#define LFR_LOOKUP_THR_12MBPS_5G              -76
-#define LFR_SENSITIVITY_THR_24MBPS_2G         -81
-#define LFR_LOOKUP_THR_24MBPS_2G              -76
-#define LFR_SENSITIVITY_THR_24MBPS_5G         -79
-#define LFR_LOOKUP_THR_24MBPS_5G              -74
-#define LFR_SENSITIVITY_THR_DEFAULT             0
-#define LFR_LOOKUP_THR_DEFAULT                -78
+#define SIR_ROAM_SCAN_RESERVED_BYTES     61
 #endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
 // SME -> HAL - This is the host offload request. 
@@ -3704,15 +3649,9 @@ typedef struct
   tSirScanTimer  aTimerValues[SIR_PNO_MAX_SCAN_TIMERS]; 
 } tSirScanTimersType;
 
-/*Pref Net Req status */
-typedef void(*PNOReqStatusCb)(void *callbackContext, VOS_STATUS status);
-
-
 typedef struct sSirPNOScanReq
 {
   tANI_U8             enable;
-  PNOReqStatusCb      statusCallback;
-  void                *callbackContext;
   eSirPNOMode         modePNO;
   tANI_U8             ucNetworksCount; 
   tSirNetworkType     aNetworks[SIR_PNO_MAX_SUPP_NETWORKS];
@@ -3786,7 +3725,6 @@ typedef struct sSirRoamOffloadScanReq
   eAniBoolean RoamScanOffloadEnabled;
   eAniBoolean MAWCEnabled;
   tANI_S8     LookupThreshold;
-  tANI_S8     RxSensitivityThreshold;
   tANI_U8     RoamRssiDiff;
   tANI_U8     ChannelCacheType;
   tANI_U8     Command;
@@ -3803,6 +3741,16 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U8   p24GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
   tANI_U16  us5GProbeTemplateLen;
   tANI_U8   p5GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
+  tANI_U8     ReservedBytes[SIR_ROAM_SCAN_RESERVED_BYTES];
+  /*ReservedBytes is to add any further params in future
+    without changing the interface params on Host
+    and firmware.The firmware right now checks
+    if the size of this structure matches and then
+    proceeds with the processing of the command.
+    So, in future, if there is any need to add
+    more params, pick the memory from reserved
+    bytes and keep deducting the reserved bytes
+    by the amount of bytes picked.*/
   tANI_U8   nProbes;
   tANI_U16  HomeAwayTime;
   tSirRoamNetworkType ConnectedNetwork;
@@ -4060,7 +4008,6 @@ typedef struct sSirTdlsSendMgmtReq
     tANI_U8             dialog;
     tANI_U16            statusCode;
     tANI_U8             responder;
-    tANI_U32            peerCapability;
     tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
     tSirMacAddr         peerMac;
     tANI_U8             addIe[1];      //Variable lenght. Dont add any field after this.
@@ -4172,6 +4119,16 @@ typedef struct sSirTdlsDelAllPeerInd
    tANI_U16               length;
    tANI_U8                sessionId;     // Session ID
 } tSirTdlsDelAllPeerInd, *tpSirTdlsDelAllPeerInd;
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+typedef struct sSirTdlsDisappearAPInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+   tANI_U16               staId;
+   tSirMacAddr            staAddr;
+} tSirTdlsDisappearAPInd, *tpSirTdlsDisappearAPInd;
+#endif
 typedef struct sSirMgmtTxCompletionInd
 {
    tANI_U16               messageType;
@@ -4349,48 +4306,6 @@ typedef struct sSirActiveModeSetBcnFilterReq
    tANI_U8                seesionId;
 } tSirSetActiveModeSetBncFilterReq, *tpSirSetActiveModeSetBncFilterReq;
 
-typedef enum
-{
-   HT40_OBSS_SCAN_PARAM_START,
-   HT40_OBSS_SCAN_PARAM_UPDATE
-}tHT40OBssScanCmdType;
-
-typedef struct sSirSmeHT40StopOBSSScanInd
-{
-   tANI_U16               messageType;
-   tANI_U16               length;
-   tANI_U8                seesionId;
-} tSirSmeHT40OBSSStopScanInd, *tpSirSmeHT40OBSSStopScanInd;
-
-typedef struct sSirSmeHT40OBSSScanInd
-{
-   tANI_U16               messageType;
-   tANI_U16               length;
-   tSirMacAddr            peerMacAddr;
-} tSirSmeHT40OBSSScanInd, *tpSirSmeHT40OBSSScanInd;
-
-typedef struct sSirHT40OBSSScanInd
-{
-    tHT40OBssScanCmdType cmdType;
-    tSirScanType scanType;
-    tANI_U16     OBSSScanPassiveDwellTime; // In TUs
-    tANI_U16     OBSSScanActiveDwellTime;  // In TUs
-    tANI_U16     BSSChannelWidthTriggerScanInterval; // In seconds
-    tANI_U16     OBSSScanPassiveTotalPerChannel; // In TU
-    tANI_U16     OBSSScanActiveTotalPerChannel;  // In TUs
-    tANI_U16     BSSWidthChannelTransitionDelayFactor;
-    tANI_U16     OBSSScanActivityThreshold;
-    tANI_U8      selfStaIdx;
-    tANI_U8      bssIdx;
-    tANI_U8      fortyMHZIntolerent;
-    tANI_U8      channelCount;
-    tANI_U8      channels[SIR_ROAM_MAX_CHANNELS];
-    tANI_U8      currentOperatingClass;
-    tANI_U16     ieFieldLen;
-    tANI_U8      ieField[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
-} tSirHT40OBSSScanInd, *tpSirHT40OBSSScanInd;
-
-
 //Reset AP Caps Changed
 typedef struct sSirResetAPCapsChange
 {
@@ -4483,7 +4398,6 @@ typedef struct sSirUpdateChanParam
 {
     tANI_U8 chanId;
     tANI_U8 pwr;
-    tANI_BOOLEAN dfsSet;
 } tSirUpdateChanParam, *tpSirUpdateChanParam;
 
 typedef struct sSirUpdateChan
@@ -4631,9 +4545,9 @@ typedef struct
 typedef PACKED_PRE struct PACKED_POST
 {
     tANI_U8   bssid[6];     /* BSSID */
-    tANI_U8   ssid[33];     /* SSID */
+    tANI_U8   ssid[32];     /* SSID */
     tANI_U8   ch;           /* Channel */
-    tANI_S8   rssi;         /* RSSI or Level */
+    tANI_U8   rssi;         /* RSSI or Level */
     /*Timestamp when Network was found. Used to calculate age based on timestamp
       in GET_RSP msg header */
     tANI_U32  timestamp;
@@ -4663,62 +4577,5 @@ typedef PACKED_PRE struct PACKED_POST
 
 #endif // FEATURE_WLAN_BATCH_SCAN
 
-#ifdef FEATURE_WLAN_CH_AVOID
-#define SIR_CH_AVOID_MAX_RANGE   4
-
-typedef struct sSirChAvoidFreqType
-{
-   tANI_U32 startFreq;
-   tANI_U32 endFreq;
-} tSirChAvoidFreqType;
-
-typedef struct sSirChAvoidIndType
-{
-   tANI_U32            avoidRangeCount;
-   tSirChAvoidFreqType avoidFreqRange[SIR_CH_AVOID_MAX_RANGE];
-} tSirChAvoidIndType;
-#endif /* FEATURE_WLAN_CH_AVOID */
-
-typedef struct sSirRateUpdateInd
-{
-    /* 0 implies RA, positive value implies fixed rate, -1 implies ignore this
-     * param.
-     */
-    tANI_S32 ucastDataRate;
-
-    /* TX flag to differentiate between HT20, HT40 etc */
-    tTxrateinfoflags ucastDataRateTxFlag;
-
-    /* BSSID - Optional. 00-00-00-00-00-00 implies apply to all BCAST STAs */
-    tSirMacAddr bssid;
-
-    /*
-     * 0 implies MCAST RA, positive value implies fixed rate,
-     * -1 implies ignore this param
-     */
-    tANI_S32 reliableMcastDataRate;//unit Mbpsx10
-
-    /* TX flag to differentiate between HT20, HT40 etc */
-    tTxrateinfoflags reliableMcastDataRateTxFlag;
-
-    /*
-     * MCAST(or BCAST) fixed data rate in 2.4 GHz, unit Mbpsx10,
-     * 0 implies ignore
-     */
-    tANI_U32 mcastDataRate24GHz;
-
-    /* TX flag to differentiate between HT20, HT40 etc */
-    tTxrateinfoflags mcastDataRate24GHzTxFlag;
-
-    /*
-     * MCAST(or BCAST) fixed data rate in 5 GHz,
-     * unit Mbpsx10, 0 implies ignore
-     */
-    tANI_U32 mcastDataRate5GHz;
-
-    /* TX flag to differentiate between HT20, HT40 etc */
-    tTxrateinfoflags mcastDataRate5GHzTxFlag;
-
-} tSirRateUpdateInd, *tpSirRateUpdateInd;
 
 #endif /* __SIR_API_H */

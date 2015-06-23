@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -229,7 +229,6 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac,
        pBeaconRep->messageType = eWNI_SME_BEACON_REPORT_RESP_XMIT_IND;
        pBeaconRep->length = length;
        pBeaconRep->uDialogToken = pSmeRrmContext->token;
-       pBeaconRep->duration = pSmeRrmContext->duration[0];
        pBeaconRep->regClass = pSmeRrmContext->regClass;
        vos_mem_copy( pBeaconRep->bssId, pSmeRrmContext->sessionBssId, sizeof(tSirMacAddr) );
 
@@ -250,8 +249,13 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac,
                vos_mem_copy( &pBeaconRep->pBssDescription[msgCounter]->ieFields[0],
                              pBssDesc->ieFields, ie_len  );
                smsLog( pMac, LOG1,
-                   "...RRM Result Bssid = "MAC_ADDRESS_STR" chan= %d, rssi = -%d",
-                   MAC_ADDR_ARRAY(pBeaconRep->pBssDescription[msgCounter]->bssId),
+                   "...RRM Result Bssid = %02x-%02x-%02x-%02x-%02x-%02x chan= %d, rssi = -%d",
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 0 ],
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 1 ],
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 2 ],
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 3 ],
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 4 ],
+                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 5 ],
                    pBeaconRep->pBssDescription[msgCounter]->channelId,
                    pBeaconRep->pBssDescription[msgCounter]->rssi * (-1));
 
@@ -399,8 +403,9 @@ static eHalStatus sme_CcxSendBeaconReqScanResults(tpAniSirGlobal pMac,
                }
                pBcnReport->bcnRepBssInfo[msgCounter].ieLen = outIeLen;
 
-               smsLog( pMac, LOG1,"Bssid("MAC_ADDRESS_STR") Channel=%d Rssi=%d",
-                       MAC_ADDR_ARRAY(pBssDesc->bssId),
+               smsLog( pMac, LOG1,"Bssid(%02X:%02X:%02X:%02X:%02X:%02X) Channel=%d Rssi=%d",
+                       pBssDesc->bssId[0], pBssDesc->bssId[1], pBssDesc->bssId[2],
+                       pBssDesc->bssId[3], pBssDesc->bssId[4], pBssDesc->bssId[5],
                        pBssDesc->channelId, (-1) * pBssDesc->rssi);
 
                pBcnReport->numBss++;
@@ -546,18 +551,14 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac,
       if( measurementDone )
       {
 #if defined(FEATURE_WLAN_CCX_UPLOAD)
-         if(eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource)
-         {
-             status = sme_CcxSendBeaconReqScanResults(pMac,
-                                                      sessionId,
-                                                      chanList[0],
-                                                      NULL,
-                                                      measurementDone,
-                                                      0);
-         }
-         else
+         status = sme_CcxSendBeaconReqScanResults(pMac,
+                                                  sessionId,
+                                                  chanList[0],
+                                                  NULL,
+                                                  measurementDone,
+                                                  0);
 #else
-             status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0);
+         status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0);
 #endif /*FEATURE_WLAN_CCX_UPLOAD*/
       }
       return status;
@@ -568,18 +569,14 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac,
    if( NULL == pScanResult && measurementDone )
    {
 #if defined(FEATURE_WLAN_CCX_UPLOAD)
-        if(eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource)
-        {
-            status = sme_CcxSendBeaconReqScanResults(pMac,
-                                                     sessionId,
-                                                     chanList[0],
-                                                     NULL,
-                                                     measurementDone,
-                                                     0);
-        }
-        else
+        status = sme_CcxSendBeaconReqScanResults(pMac,
+                                                 sessionId,
+                                                 chanList[0],
+                                                 NULL,
+                                                 measurementDone,
+                                                 0);
 #else
-            status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0 );
+        status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0 );
 #endif /*FEATURE_WLAN_CCX_UPLOAD*/
    }
 
@@ -700,12 +697,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    if ((pSmeRrmContext->currentIndex) >= pSmeRrmContext->channelList.numOfChannels)
        return status;
 
-   if( eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource ||
-       eRRM_MSG_SOURCE_LEGACY_CCX == pSmeRrmContext->msgSource )
-       scanType = pSmeRrmContext->measMode[pSmeRrmContext->currentIndex];
-   else
-       scanType = pSmeRrmContext->measMode[0];
-
+   scanType = pSmeRrmContext->measMode[pSmeRrmContext->currentIndex];
    if ((eSIR_ACTIVE_SCAN == scanType) || (eSIR_PASSIVE_SCAN == scanType))
    {
 #if defined WLAN_VOWIFI_DEBUG
@@ -715,6 +707,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
        vos_mem_zero( &scanRequest, sizeof(scanRequest));
 
        /* set scanType, active or passive */
+       scanRequest.bcnRptReqScan = TRUE;
        scanRequest.scanType = scanType;
 
        vos_mem_copy(scanRequest.bssid,
@@ -739,16 +732,9 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
 
        /* set min and max channel time */
        scanRequest.minChnTime = 0; //pSmeRrmContext->duration; Dont use min timeout.
-       if( eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource ||
-           eRRM_MSG_SOURCE_LEGACY_CCX == pSmeRrmContext->msgSource )
-          scanRequest.maxChnTime = pSmeRrmContext->duration[pSmeRrmContext->currentIndex];
-       else
-          scanRequest.maxChnTime = pSmeRrmContext->duration[0];
-
-       smsLog( pMac, LOG1, "Scan Type(%s (%d)) Max Dwell Time(%d)",
-               lim_ScanTypetoString(scanRequest.scanType),
-               scanRequest.scanType,
-               scanRequest.maxChnTime );
+       scanRequest.maxChnTime = pSmeRrmContext->duration[pSmeRrmContext->currentIndex];
+       smsLog( pMac, LOG1, "Scan Type(%d) Max Dwell Time(%d)", scanRequest.scanType,
+                  scanRequest.maxChnTime );
 
 #if defined WLAN_VOWIFI_DEBUG
        smsLog( pMac, LOGE, "For Duration %d ", scanRequest.maxChnTime );
@@ -796,8 +782,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    }
    else
    {
-       smsLog( pMac, LOGE, "Unknown beacon report request mode(%s (%d))",
-               lim_ScanTypetoString(scanType), scanType);
+       smsLog( pMac, LOGE, "Unknown beacon report request mode(%d)", scanType);
                 /* Indicate measurement completion to PE */
                 /* If this is not done, pCurrentReq pointer will not be freed and
                    PE will not handle subsequent Beacon requests */
@@ -911,9 +896,8 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
 
    pSmeRrmContext->token = pBeaconReq->uDialogToken;
    pSmeRrmContext->regClass = pBeaconReq->channelInfo.regulatoryClass;
-   pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
-   pSmeRrmContext->currentIndex = 0;
-   pSmeRrmContext->msgSource = pBeaconReq->msgSource;
+         pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
+         pSmeRrmContext->currentIndex = 0;
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->measMode, (tANI_U8*)&pBeaconReq->fMeasurementtype, SIR_CCX_MAX_MEAS_IE_REQS);
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->duration, (tANI_U8*)&pBeaconReq->measurementDuration, SIR_CCX_MAX_MEAS_IE_REQS);
 
@@ -1185,8 +1169,13 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
                                                 sizeof(tSirNeighborBssDescription));
 
 #if defined WLAN_VOWIFI_DEBUG
-       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: "MAC_ADDRESS_STR,
-                            MAC_ADDR_ARRAY(pNeighborRpt->sNeighborBssDescription[i].bssId));
+       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: %02x:%02x:%02x:%02x:%02x:%02x ",
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[0], 
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[1], 
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[2], 
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[3], 
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[4], 
+                    pNeighborRpt->sNeighborBssDescription[i].bssId[5]);
 #endif
 
        /* Calculate the roam score based on the BSS Capability in the BSSID Information and store it in Neighbor report Desc */
@@ -1199,8 +1188,13 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        }
        else
        {
-           smsLog(pMac, LOGE, FL("Roam score of BSSID  "MAC_ADDRESS_STR" is 0, Ignoring.."),
-                        MAC_ADDR_ARRAY(pNeighborRpt->sNeighborBssDescription[i].bssId));
+           smsLog(pMac, LOGE, FL("Roam score of BSSID  %02x:%02x:%02x:%02x:%02x:%02x is 0, Ignoring.."),
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[0],
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[1],
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[2],
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[3],
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[4],
+                        pNeighborRpt->sNeighborBssDescription[i].bssId[5]);
 
            vos_mem_free(pNeighborReportDesc->pNeighborBssDescription);
            vos_mem_free(pNeighborReportDesc);

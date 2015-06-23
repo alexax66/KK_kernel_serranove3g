@@ -53,6 +53,7 @@
 #include "sirApi.h"
 #include "sirMacProtDef.h"
 #include "csrLinkList.h"
+
 typedef enum
 {
     eCSR_AUTH_TYPE_NONE,    //never used
@@ -187,6 +188,7 @@ typedef enum {
     eCSR_SCAN_SOFTAP_CHANNEL_RANGE,
     eCSR_SCAN_P2P_FIND_PEER,
 }eCsrRequestType;
+
 typedef enum {
     eCSR_SCAN_RESULT_GET = 0,
     eCSR_SCAN_RESULT_FLUSH = 1,     //to delete all cached scan results
@@ -199,16 +201,6 @@ typedef enum
     eCSR_SCAN_ABORT,
    eCSR_SCAN_FOUND_PEER,
 }eCsrScanStatus;
-
-/* Reason to abort the scan
- * The reason can used later to decide whether to update the scan results
- * to upper layer or not
- */
-typedef enum
-{
-    eCSR_SCAN_ABORT_DEFAULT,
-    eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE, //Scan aborted due to band change
-}eCsrAbortReason;
 
 #define CSR_SCAN_TIME_DEFAULT       0
 #define CSR_VALUE_IGNORED           0xFFFFFFFF
@@ -290,6 +282,7 @@ typedef struct tagCsrScanRequest
     eCsrRequestType requestType;    //11d scan or full scan
     tANI_BOOLEAN p2pSearch;
     tANI_BOOLEAN skipDfsChnlInP2pSearch;
+    tANI_BOOLEAN bcnRptReqScan;     //is Scan issued by Beacon Report Request
 }tCsrScanRequest;
 
 typedef struct tagCsrBGScanRequest
@@ -571,6 +564,9 @@ typedef enum
     eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND,
     eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND,
     eCSR_ROAM_RESULT_LINK_ESTABLISH_REQ_RSP,
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    eCSR_ROAM_RESULT_TDLS_DISAPPEAR_AP_IND,
+#endif
 #endif
 
 }eCsrRoamResult;
@@ -876,13 +872,8 @@ typedef struct tagCsrRoamProfile
     tANI_U8 *pWAPIReqIE;   //If not null, it has the IE byte stream for WAPI
 #endif /* FEATURE_WLAN_WAPI */
 
-    //The byte count in the pAddIE for scan (at the time of join)
-    tANI_U32 nAddIEScanLength;
-    /* Additional IE information.
-     * It has the IE byte stream for additional IE,
-     * which can be WSC IE and/or P2P IE
-     */
-    tANI_U8  addIEScan[SIR_MAC_MAX_IE_LENGTH+2];       //Additional IE information.
+    tANI_U32 nAddIEScanLength;   //The byte count in the pAddIE for scan (at the time of join)
+    tANI_U8 *pAddIEScan;       //If not null, it has the IE byte stream for additional IE, which can be WSC IE and/or P2P IE
     tANI_U32 nAddIEAssocLength;   //The byte count in the pAddIE for assoc
     tANI_U8 *pAddIEAssoc;       //If not null, it has the IE byte stream for additional IE, which can be WSC IE and/or P2P IE
 
@@ -1035,8 +1026,6 @@ typedef struct tagCsrConfigParam
     tANI_U32  nActiveMinChnTime;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTime;     //in units of milliseconds
 
-    tANI_U32  nInitialDwellTime;      //in units of milliseconds
-
     tANI_U32  nActiveMinChnTimeBtc;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTimeBtc;     //in units of milliseconds
     tANI_U32  disableAggWithBtc;
@@ -1136,11 +1125,7 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN  enableOxygenNwk;
 
     tANI_U8 isAmsduSupportInAMPDU;
-    tANI_U8 nSelect5GHzMargin;
-    tANI_BOOLEAN initialScanSkipDFSCh;
-    tANI_U8 allowDFSChannelRoam;
 
-    tANI_BOOLEAN sendDeauthBeforeCon;
 }tCsrConfigParam;
 
 //Tush
@@ -1219,8 +1204,11 @@ typedef struct tagCsrRoamInfo
     tANI_U8* assocReqPtr;
 
     tANI_S8 rxRssi;
-    tANI_U32 maxRateFlags;
 }tCsrRoamInfo;
+
+
+
+
 
 typedef struct tagCsrFreqScanInfo
 {
@@ -1383,7 +1371,6 @@ typedef struct tagCsrTdlsSendMgmt
         tANI_U8 dialog;
         tANI_U16 statusCode;
         tANI_U8 responder;
-        tANI_U32 peerCapability;
         tANI_U8 *buf;
         tANI_U8 len;
 
@@ -1496,6 +1483,7 @@ typedef eHalStatus (*csrRoamSessionCloseCallback)(void *pContext);
 
 
 ///////////////////////////////////////////Common Roam ends
+
 
 
 /* ---------------------------------------------------------------------------

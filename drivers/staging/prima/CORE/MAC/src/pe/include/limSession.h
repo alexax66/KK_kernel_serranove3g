@@ -113,7 +113,6 @@ typedef struct sPESession           // Added to Support BT-AMP
 #endif
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
     tANI_U16                channelChangeReasonCode;
-    tANI_U16                channelChangeCSA;        // channel change flag for CSA
     tANI_U8                 dot11mode;
     tANI_U8                 htCapability;
     /* Supported Channel Width Set: 0-20MHz 1 - 40MHz */
@@ -360,9 +359,6 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_S8 rssi;
 #endif
     tANI_U8 isAmsduSupportInAMPDU;
-    tANI_BOOLEAN isCiscoVendorAP;
-    /* To hold OBSS Scan IE Parameters */
-    tSirOBSSHT40Param obssHT40ScanParam;
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4

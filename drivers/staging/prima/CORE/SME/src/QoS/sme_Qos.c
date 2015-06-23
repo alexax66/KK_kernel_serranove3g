@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,12 +41,12 @@
 
 
 /**=========================================================================
-
+  
   \file  sme_Qos.c
-
+  
   \brief implementation for SME QoS APIs
-
-
+  
+  
   ========================================================================*/
 /* $Header$ */
 /*--------------------------------------------------------------------------
@@ -1515,8 +1515,7 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                return status;
             }
             /* Flow aggregation */
-            if(((pACInfo->tspec_mask_status > 0) &&
-                (pACInfo->tspec_mask_status <= SME_QOS_TSPEC_INDEX_MAX)))
+            if(SME_QOS_TSPEC_MASK_BIT_1_2_SET != pACInfo->tspec_mask_status)
             {
               /* Either of upstream, downstream or bidirectional flows are present */
               /* If either of new stream or current stream is for bidirecional, aggregate 
@@ -1545,7 +1544,7 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                 pACInfo->tspec_mask_status = SME_QOS_TSPEC_MASK_BIT_1_2_SET;
               }
             }
-            else if(SME_QOS_TSPEC_MASK_BIT_1_2_SET == pACInfo->tspec_mask_status)
+            else
             {
               /* Both uplink and downlink streams are present. */
               /* If new stream is bidirectional, aggregate new stream with all existing
@@ -1569,12 +1568,6 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                 // Aggregate with 1st tspec index
                 tmask = SME_QOS_TSPEC_MASK_BIT_1_SET;
               }
-            }
-            else
-            {
-              VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED,
-                "%s: %d: wrong tmask = %d", __func__, __LINE__,
-                pACInfo->tspec_mask_status );
             }
          }
          else
@@ -1632,14 +1625,6 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
          }
          else
          {
-            if (!(new_tmask > 0 && new_tmask <= SME_QOS_TSPEC_INDEX_MAX))
-            {
-                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                         "%s: %d: ArrayIndexOutOfBoundsException",
-                         __func__, __LINE__);
-
-                 return SME_QOS_STATUS_SETUP_FAILURE_RSP;
-            }
             tmask = new_tmask;
             pACInfo->requested_QoSInfo[tmask-1] = Tspec_Info;
          }
@@ -1657,15 +1642,8 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
          pSession->readyForPowerSave = VOS_TRUE;
          return status;
       }
-      //although aggregating, make sure to request on the correct UP,TID,PSB
-      //and direction
+      //although aggregating, make sure to request on the correct UP
       pACInfo->requested_QoSInfo[tmask - 1].ts_info.up = Tspec_Info.ts_info.up;
-      pACInfo->requested_QoSInfo[tmask - 1].ts_info.tid =
-                                            Tspec_Info.ts_info.tid;
-      pACInfo->requested_QoSInfo[tmask - 1].ts_info.direction =
-                                            Tspec_Info.ts_info.direction;
-      pACInfo->requested_QoSInfo[tmask - 1].ts_info.psb =
-                                            Tspec_Info.ts_info.psb;
       status = sme_QosSetup(pMac, sessionId,
                             &pACInfo->requested_QoSInfo[tmask - 1], ac);
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
@@ -1750,12 +1728,7 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
             //which index of the AC the request was from
             pACInfo->tspec_pending = tmask;
          }
-         if(tmask)
-            pACInfo->num_flows[tmask - 1]++;
-         else
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                      "%s: %d: ArrayIndexOutOfBoundsException",
-                       __func__, __LINE__);
+         pACInfo->num_flows[tmask - 1]++;
          //indicate on which index the flow entry belongs to & add it to the 
          //Flow List at the end
          pentry->tspec_mask = tmask;
@@ -3689,18 +3662,15 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
     tDot11fIERICDataDesc *pRicDataDesc = NULL;
     eHalStatus            status = eHAL_STATUS_SUCCESS;
     tCsrRoamSession *pCsrSession = CSR_GET_SESSION( pMac, sessionId );
-    tCsrRoamConnectedInfo *pCsrConnectedInfo = NULL;
+    tCsrRoamConnectedInfo *pCsrConnectedInfo = &pCsrSession->connectedInfo;
     tANI_U32    ricRspLen;
-
-    if(NULL == pCsrSession)
+    /* To silence the KW tool NULL check is added */ 
+    if(pCsrConnectedInfo == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                FL("The Session pointer is NULL"));
+                FL("The connected info pointer is NULL"));
         return eHAL_STATUS_FAILURE;
     }
-
-    pCsrConnectedInfo = &pCsrSession->connectedInfo;
-
     ricRspLen = pCsrConnectedInfo->nRICRspLength;
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
@@ -5604,7 +5574,7 @@ eHalStatus sme_QosAggregateParams(
    if(pCurrent_Tspec_Info->ts_info.direction != 
       pInput_Tspec_Info->ts_info.direction)
    {
-      TspecInfo.ts_info.direction = pInput_Tspec_Info->ts_info.direction;
+      TspecInfo.ts_info.direction = SME_QOS_WMM_TS_DIR_BOTH;
    }
    /*-------------------------------------------------------------------------
      Max MSDU size : these sizes are `maxed'
@@ -6129,7 +6099,7 @@ static eHalStatus sme_QosBufferExistingFlows(tpAniSirGlobal pMac,
    pEntry = csrLLPeekHead( &sme_QosCb.flow_list, VOS_FALSE );
    if(!pEntry)
    {
-      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                 "%s: %d: Flow List empty, nothing to buffer",
                 __func__, __LINE__);
       return eHAL_STATUS_FAILURE;
@@ -7196,30 +7166,6 @@ static v_BOOL_t sme_QosIsRspPending(v_U8_t sessionId, sme_QosEdcaAcType ac)
    }
    return status;
 }
-
-/*--------------------------------------------------------------------------
-  \brief sme_QosUpdateHandOff() - Function which can be called to update
-   Hand-off state of SME QoS Session
-  \param sessionId - session id
-  \param updateHandOff - value True/False to update the handoff flag
-
-  \sa
-
--------------------------------------------------------------------------*/
-void sme_QosUpdateHandOff(v_U8_t sessionId,
-                          v_BOOL_t updateHandOff)
-{
-   sme_QosSessionInfo *pSession;
-   pSession = &sme_QosCb.sessionInfo[sessionId];
-   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED,
-             "%s: %d: handoffRequested %d updateHandOff %d",
-             __func__, __LINE__,pSession->handoffRequested,
-             updateHandOff);
-
-   pSession->handoffRequested = updateHandOff;
-
-}
-
 /*--------------------------------------------------------------------------
   \brief sme_QosIsUapsdActive() - Function which can be called to determine
   if any sessions require PMC to be in U-APSD mode.
@@ -7380,16 +7326,16 @@ void sme_QosPmcDeviceStateUpdateInd(void *callbackContext, tPmcState pmcState)
    default:
       status = eHAL_STATUS_SUCCESS;
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                "%s: %d: nothing to process in PMC state %s (%d)",
+                "%s: %d: nothing to process in PMC state %d",
                 __func__, __LINE__,
-                sme_PmcStatetoString(pmcState), pmcState);
+                pmcState);
    }
    if(!HAL_STATUS_SUCCESS(status))
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
-                "%s: %d: ignoring Device(PMC) state change to %s (%d)",
+                "%s: %d: ignoring Device(PMC) state change to %d",
                 __func__, __LINE__,
-                sme_PmcStatetoString(pmcState), pmcState);
+                pmcState);
    }
 
 }

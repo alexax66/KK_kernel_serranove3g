@@ -452,13 +452,10 @@ typedef enum
   /* WLAN FW LPHB config request */
   WDI_LPHB_CFG_REQ                              = 85,
 
+#ifdef FEATURE_WLAN_BATCH_SCAN
   /* WLAN FW set batch scan request */
   WDI_SET_BATCH_SCAN_REQ                        = 86,
-
-  WDI_UPDATE_CHAN_REQ                           = 87,
-
-  /*WLAN DAL Set Max Tx Power Per band Request*/
-  WDI_SET_MAX_TX_POWER_PER_BAND_REQ             = 88,
+#endif
 
   WDI_MAX_REQ,
 
@@ -483,24 +480,18 @@ typedef enum
   /* Send a delete periodic Tx pattern indicationto HAL */
   WDI_DEL_PERIODIC_TX_PATTERN_IND,
 
-  /*Send stop batch scan indication to FW*/
-  WDI_STOP_BATCH_SCAN_IND,
-
-  /*Send stop batch scan indication to FW*/
-  WDI_TRIGGER_BATCH_SCAN_RESULT_IND,
-  WDI_START_HT40_OBSS_SCAN_IND,
-  WDI_STOP_HT40_OBSS_SCAN_IND,
-
-  /* Send Rate Update Indication */
-  WDI_RATE_UPDATE_IND,
-
-  /* csa channel switch req*/
-  WDI_CH_SWITCH_REQ_V1,
-
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+  /*Send stop batch scan indication to FW*/
+  WDI_STOP_BATCH_SCAN_IND,
+  /*Send stop batch scan indication to FW*/
+  WDI_TRIGGER_BATCH_SCAN_RESULT_IND,
+#endif
+
   WDI_MAX_UMAC_IND
-}WDI_RequestEnumType;
+}WDI_RequestEnumType; 
 
 /*--------------------------------------------------------------------------- 
    WLAN DAL Supported Response Types
@@ -757,14 +748,9 @@ typedef enum
   /* WLAN FW LPHB Config response */
   WDI_LPHB_CFG_RESP                             = 84,
 
-  WDI_SET_BATCH_SCAN_RESP                       = 85,
-
-  WDI_UPDATE_CHAN_RESP                          = 86,
-
-  WDI_SET_MAX_TX_POWER_PER_BAND_RSP             = 87,
-
-  /* channel switch resp v1*/
-  WDI_CH_SWITCH_RESP_V1                         = 88,
+#ifdef FEATURE_WLAN_BATCH_SCAN
+  WDI_SET_BATCH_SCAN_RESP                        = 85,
+#endif
 
   /*-------------------------------------------------------------------------
     Indications
@@ -826,12 +812,10 @@ typedef enum
   WDI_HAL_PERIODIC_TX_PTRN_FW_IND     = WDI_HAL_IND_MIN + 16,
 
 
+#ifdef FEATURE_WLAN_BATCH_SCAN
   WDI_BATCHSCAN_RESULT_IND           =  WDI_HAL_IND_MIN + 17,
+#endif
 
-  WDI_HAL_CH_AVOID_IND                 = WDI_HAL_IND_MIN + 18,
-
-  /* print register values indication from FW to Host */
-  WDI_PRINT_REG_INFO_IND               = WDI_HAL_IND_MIN + 19,
 
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
@@ -1137,8 +1121,6 @@ typedef struct
   DXE when DXE wakes up from power save*/
   unsigned int                dxePhyAddr;
 
-  wpt_boolean                 dxeRingsEmpty;
-
   /*NV download request parameters  */
   WDI_NvDownloadReqParamsType   wdiCachedNvDownloadReq;
 
@@ -1168,16 +1150,6 @@ typedef struct
 
   /* enable/disable SSR on WDI timeout */
   wpt_boolean                 bEnableSSR;
-
-  /* timestamp derived from msm arch counter. */
-  /*timestamp when we start response timer*/
-  wpt_uint64                  uArchTimeStampRspTmrStart;
-
-  /*timestamp when we get response timer event*/
-  wpt_uint64                  uArchTimeStampRspTmrExp;
-
-  /* reason for WDI_DetectedDeviceError */
-  void *                        DeviceErrorReason;
 }WDI_ControlBlockType; 
 
 
@@ -2048,24 +2020,6 @@ WDI_ProcessChannelSwitchReq
 );
 
 /**
- @brief Process Channel Switch Request function (called when
-        Main FSM allows it)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-
-WDI_Status WDI_ProcessChannelSwitchReq_V1
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-
-/**
  @brief Process Config STA Request function (called when Main FSM 
         allows it)
  
@@ -2286,22 +2240,6 @@ WDI_ProcessNvDownloadReq
  @return Result of the function call
 */
 WDI_Status WDI_ProcessSetMaxTxPowerReq
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
- @brief Process Set Max Tx Power Per Band Request function (called when Main
-        FSM allows it)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status WDI_ProcessSetMaxTxPowerPerBandReq
 (
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
@@ -2886,21 +2824,6 @@ WDI_Status WDI_ProcessGetBatchScanReq
 );
 #endif /* FEATURE_WLAN_BATCH_SCAN */
 
-/**
- @brief WDI_ProcessUpdateChannelParamsReq -
-    Send update channel request to FW
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
-
- @see
- @return success or failure
-*/
-WDI_Status WDI_ProcessUpdateChannelParamsReq
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
 
 /*=========================================================================
                              Indications
@@ -3060,32 +2983,6 @@ WDI_ProcessDelPeriodicTxPtrnInd
  );
 
 #endif
-/**
- @brief Process start OBSS scan request from Host
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessHT40OBSSScanInd(
-  WDI_ControlBlockType*  pWDICtx,  WDI_EventInfoType*   pEventData );
-
-
-/**
- @brief Process stop OBSS scan request from Host
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessHT40OBSSStopScanInd(
-  WDI_ControlBlockType*  pWDICtx,  WDI_EventInfoType*   pEventData );
 
 /*========================================================================
           Main DAL Control Path Response Processing API 
@@ -3552,22 +3449,6 @@ WDI_ProcessChannelSwitchRsp
   WDI_EventInfoType*     pEventData
 );
 
-/**
- @brief Process Channel Switch Rsp function (called when a response
-        is being received over the bus from HAL)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessChannelSwitchRsp_V1
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
 
 /**
  @brief Process Config STA Rsp function (called when a response
@@ -3600,23 +3481,6 @@ WDI_ProcessConfigStaRsp
 WDI_Status
 WDI_ProcessSetLinkStateRsp
 ( 
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
- @brief Process Update Channel Rsp function (called when a response is
-        being received over the bus from HAL)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessUpdateChanRsp
-(
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
@@ -3753,23 +3617,6 @@ WDI_ProcessUpdateProbeRspTemplateRsp
 WDI_Status
 WDI_ProcessSetMaxTxPowerRsp
 ( 
-  WDI_ControlBlockType*          pWDICtx,
-  WDI_EventInfoType*             pEventData
-);
-
-/**
- @brief Process Set Max Tx Power Per Band Rsp function (called when a response
-        is being received over the bus from HAL)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessSetMaxTxPowerPerBandRsp
-(
   WDI_ControlBlockType*          pWDICtx,
   WDI_EventInfoType*             pEventData
 );
@@ -5710,55 +5557,6 @@ WDI_ProcessBatchScanResultInd
 );
 
 #endif /* FEATURE_WLAN_BATCH_SCAN */
-
-#ifdef FEATURE_WLAN_CH_AVOID
-/**
- @brief v -
-
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessChAvoidInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif /* FEATURE_WLAN_CH_AVOID */
-
-/**
- @brief Process Rate Update Indication and post it to HAL
-
- @param  pWDICtx:    pointer to the WLAN DAL context
-         pEventData: pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessRateUpdateInd
-(
-    WDI_ControlBlockType*  pWDICtx,
-    WDI_EventInfoType*     pEventData
-);
-
-/**
- @brief v -
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_printRegInfo
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
 
 #endif /*WLAN_QCT_WDI_I_H*/
 

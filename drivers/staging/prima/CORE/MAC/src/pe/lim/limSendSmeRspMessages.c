@@ -213,77 +213,6 @@ static void limSendSmeJoinReassocRspAfterResume( tpAniSirGlobal pMac,
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 }
 
-/**
- * limGetMaxRateFlags()
- *
- *FUNCTION:
- *This function is called by limSendSmeJoinReassocRsp get rateFlags.
- *These rateflags are used when MAX link-speed need to be reported
- *to UI.
- *
- *PARAMS:
- * @param  pStaDs - Pointer to internal STA Datastructure
- * @param  psessionEntry - Pointer to the session entry
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- *
- *NOTE:
- *
- * @return rateFlags
- */
-tANI_U32 limGetMaxRateFlags(tpDphHashNode pStaDs, tpPESession psessionEntry)
-{
-    tANI_U32 rate_flags = 0;
-
-   if (NULL == psessionEntry)
-    {
-        return rate_flags;
-    }
-
-    if(!IS_DOT11_MODE_HT(psessionEntry->dot11mode) &&
-       !IS_DOT11_MODE_VHT(psessionEntry->dot11mode))
-    {
-       rate_flags |= eHAL_TX_RATE_LEGACY;
-    }
-    else
-    {
-        if(IS_DOT11_MODE_HT(psessionEntry->dot11mode))
-        {
-            if (pStaDs->htShortGI20Mhz || pStaDs->htShortGI40Mhz )
-                rate_flags |= eHAL_TX_RATE_SGI;
-
-            if (pStaDs->htSupportedChannelWidthSet)
-                rate_flags |=eHAL_TX_RATE_HT40;
-            else
-                rate_flags |=eHAL_TX_RATE_HT20;
-        }
-#ifdef WLAN_FEATURE_11AC
-        if(IS_DOT11_MODE_VHT(psessionEntry->dot11mode))
-        {
-            if (WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ ==
-                            pStaDs->vhtSupportedChannelWidthSet)
-            {
-                rate_flags |= eHAL_TX_RATE_VHT80;
-            }
-            else if(WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ ==
-                           pStaDs->vhtSupportedChannelWidthSet)
-            {
-                if (eHT_CHANNEL_WIDTH_40MHZ ==
-                               pStaDs->htSupportedChannelWidthSet)
-                    rate_flags |= eHAL_TX_RATE_VHT40;
-                else
-                    rate_flags |= eHAL_TX_RATE_VHT20;
-           }
-        }
-        else
-            rate_flags |= eHAL_TX_RATE_VHT20;
-#endif
-    }
-
-     return rate_flags;
-}
 
 /**
  * limSendSmeJoinReassocRsp()
@@ -389,10 +318,6 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
                 pSirSmeJoinRsp->staId = pStaDs->staIndex;
                 pSirSmeJoinRsp->ucastSig   = pStaDs->ucUcastSig;
                 pSirSmeJoinRsp->bcastSig   = pStaDs->ucBcastSig;
-                pSirSmeJoinRsp->maxRateFlags =
-                                limGetMaxRateFlags(pStaDs, psessionEntry);
-                PELOGE(limLog(pMac, LOG1, FL("maxRateFlags: %x"),
-                                              pSirSmeJoinRsp->maxRateFlags);)
             }
         }
 
@@ -542,6 +467,7 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
 } /*** end limSendSmeJoinReassocRsp() ***/
 
 
+
 /**
  * limSendSmeStartBssRsp()
  *
@@ -658,6 +584,10 @@ limSendSmeStartBssRsp(tpAniSirGlobal pMac,
                 //This is the size of the message, subtracting the size of the pointer to ieFields
                 size += ieLen - sizeof(tANI_U32);
         }
+
+            
+
+        
     }
 
     pSirSmeRsp->messageType     = msgType;
@@ -688,6 +618,10 @@ limSendSmeStartBssRsp(tpAniSirGlobal pMac,
 
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 } /*** end limSendSmeStartBssRsp() ***/
+
+
+
+
 
 #define LIM_MAX_NUM_OF_SCAN_RESULTS_REPORTED  20
 #define LIM_SIZE_OF_EACH_BSS  400 // this is a rough estimate
@@ -1308,9 +1242,7 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_RSP with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDisassocRsp->messageType = eWNI_SME_DISASSOC_RSP;
             pSirSmeDisassocRsp->length      = sizeof(tSirSmeDisassocRsp);
             //sessionId
@@ -1358,9 +1290,7 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DISASSOC_IND with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDisassocInd->messageType = eWNI_SME_DISASSOC_IND;
             pSirSmeDisassocInd->length      = sizeof(tSirSmeDisassocInd);
             
@@ -1731,9 +1661,7 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_RSP with "
-            "retCode: %d for"MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDeauthRsp->messageType = eWNI_SME_DEAUTH_RSP;
             pSirSmeDeauthRsp->length      = sizeof(tSirSmeDeauthRsp);
             pSirSmeDeauthRsp->statusCode = reasonCode;
@@ -1766,9 +1694,7 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_IND with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDeauthInd->messageType = eWNI_SME_DEAUTH_IND;
             pSirSmeDeauthInd->length      = sizeof(tSirSmeDeauthInd);
             pSirSmeDeauthInd->reasonCode = eSIR_MAC_UNSPEC_FAILURE_REASON;
@@ -2839,8 +2765,9 @@ void limSendSmeMaxAssocExceededNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,
     pSmeMaxAssocInd->sessionId = smesessionId;
     mmhMsg.type = pSmeMaxAssocInd->mesgType;
     mmhMsg.bodyptr = pSmeMaxAssocInd;
-    PELOG1(limLog(pMac, LOG1, FL("msgType %s peerMacAddr "MAC_ADDRESS_STR
-                  " sme session id %d"), "eWNI_SME_MAX_ASSOC_EXCEEDED", MAC_ADDR_ARRAY(peerMacAddr));)
+    PELOG1(limLog(pMac, LOG1, FL("msgType %s peerMacAddr %02x-%02x-%02x-%02x-%02x-%02x"
+                "sme session id %d"),"eWNI_SME_MAX_ASSOC_EXCEEDED", peerMacAddr[0], peerMacAddr[1],
+                peerMacAddr[2], peerMacAddr[3], peerMacAddr[4], peerMacAddr[5], smesessionId);)
     MTRACE(macTraceMsgTx(pMac, smesessionId, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
 

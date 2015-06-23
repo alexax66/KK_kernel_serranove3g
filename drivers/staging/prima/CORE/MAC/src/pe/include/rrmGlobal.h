@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -65,13 +65,6 @@ typedef enum eRrmRetStatus
     eRRM_FAILURE
 } tRrmRetStatus;
 
-typedef enum eRrmMsgReqSource
-{
-    eRRM_MSG_SOURCE_LEGACY_CCX  = 1, /* legacy ccx */
-    eRRM_MSG_SOURCE_11K         = 2, /* 11k */
-    eRRM_MSG_SOURCE_CCX_UPLOAD  = 3  /* ccx upload approach */
-} tRrmMsgReqSource;
-
 typedef struct sSirChannelInfo
 {
    tANI_U8 regulatoryClass;
@@ -91,7 +84,6 @@ typedef struct sSirBeaconReportReqInd
    tAniSSID     ssId;              //May be wilcard.
    tANI_U16      uDialogToken;
    tSirChannelList channelList; //From AP channel report.
-   tRrmMsgReqSource msgSource;
 } tSirBeaconReportReqInd, * tpSirBeaconReportReqInd;
 
 
@@ -192,7 +184,6 @@ typedef struct sRRMReq
          tRRMBeaconReportRequestedIes reqIes;
       }Beacon;
    }request;
-   tANI_U8 sendEmptyBcnRpt;
 }tRRMReq, *tpRRMReq;
 
 typedef struct sRRMCaps
