@@ -1,55 +1,12 @@
-# We can build either as part of a standalone Kernel build or part
-# of an Android build.  Determine which mechanism is being used
-ifeq ($(MODNAME),)
-	KERNEL_BUILD := 1
-else
-	KERNEL_BUILD := 0
-endif
-
-ifeq ($(KERNEL_BUILD),1)
-	# These are provided in Android-based builds
-	# Need to explicitly define for Kernel-based builds
-	MODNAME := wlan
-	WLAN_ROOT := drivers/staging/prima
-endif
-
-ifeq ($(KERNEL_BUILD), 0)
-	# These are configurable via Kconfig for kernel-based builds
-	# Need to explicitly configure for Android-based builds
-
-	#Flag to enable BlueTooth AMP feature
-	CONFIG_PRIMA_WLAN_BTAMP := n
-
-	#Flag to enable Legacy Fast Roaming(LFR)
-	CONFIG_PRIMA_WLAN_LFR := y
-
-	#JB kernel has PMKSA patches, hence enabling this flag
-	CONFIG_PRIMA_WLAN_OKC := y
-
-	# JB kernel has CPU enablement patches, so enable
-	CONFIG_PRIMA_WLAN_11AC_HIGH_TP := y
-
-	#Flag to enable TDLS feature
-	CONFIG_QCOM_TDLS := y
-
-	#Flag to enable Fast Transition (11r) feature
-	CONFIG_QCOM_VOWIFI_11R := y
-
-	#Flag to enable Protected Managment Frames (11w) feature
-	ifneq ($(CONFIG_PRONTO_WLAN),)
-	CONFIG_WLAN_FEATURE_11W := y
-	endif
-
-	#Flag to enable new Linux Regulatory implementation
-	CONFIG_ENABLE_LINUX_REG := y
-
-endif
-
-# To enable CCX upload, dependent config
-# CONFIG_QCOM_CCX must be enabled.
-CONFIG_QCOM_CCX_UPLOAD := n
+MODNAME := wlan
+WLAN_ROOT := drivers/staging/prima
 
 # Feature flags which are not (currently) configurable via Kconfig
+
+# To enable CONFIG_QCOM_ESE_UPLOAD, dependent config
+# CONFIG_QCOM_ESE must be enabled.
+CONFIG_QCOM_ESE := n
+CONFIG_QCOM_ESE_UPLOAD := n
 
 #Whether to build debug version
 BUILD_DEBUG_VERSION := 1
@@ -63,6 +20,8 @@ PANIC_ON_BUG := 1
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
 
+#Measure Roam Delay
+MEASURE_ROAM_TIME_DELAY := 0
 
 ifeq ($(CONFIG_CFG80211),y)
 HAVE_CFG80211 := 1
@@ -137,6 +96,7 @@ HDD_OBJS := 	$(HDD_SRC_DIR)/bap_hdd_main.o \
 		$(HDD_SRC_DIR)/wlan_hdd_scan.o \
 		$(HDD_SRC_DIR)/wlan_hdd_softap_tx_rx.o \
 		$(HDD_SRC_DIR)/wlan_hdd_tx_rx.o \
+                $(HDD_SRC_DIR)/wlan_hdd_trace.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wext.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wmm.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wowl.o
@@ -210,9 +170,9 @@ MAC_LIM_OBJS := $(MAC_SRC_DIR)/pe/lim/limAIDmgmt.o \
 		$(MAC_SRC_DIR)/pe/lim/limTrace.o \
 		$(MAC_SRC_DIR)/pe/lim/limUtils.o
 
-ifeq ($(CONFIG_QCOM_CCX),y)
-ifneq ($(CONFIG_QCOM_CCX_UPLOAD),y)
-MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessCcxFrame.o
+ifeq ($(CONFIG_QCOM_ESE),y)
+ifneq ($(CONFIG_QCOM_ESE_UPLOAD),y)
+MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessEseFrame.o
 endif
 endif
 
@@ -326,9 +286,13 @@ NLINK_OBJS :=	$(NLINK_SRC_DIR)/wlan_nlink_srv.o
 PTT_SRC_DIR :=	$(SVC_SRC_DIR)/ptt
 PTT_OBJS :=	$(PTT_SRC_DIR)/wlan_ptt_sock_svc.o
 
+WLAN_LOGGING_SRC_DIR := $(SVC_SRC_DIR)/logging
+WLAN_LOGGING_OBJS := $(WLAN_LOGGING_SRC_DIR)/wlan_logging_sock_svc.o
+
 SVC_OBJS :=	$(BTC_OBJS) \
 		$(NLINK_OBJS) \
-		$(PTT_OBJS)
+		$(PTT_OBJS) \
+                $(WLAN_LOGGING_OBJS)
 
 ############ SYS ############
 SYS_DIR :=	CORE/SYS
@@ -365,7 +329,8 @@ TL_INC := 	-I$(WLAN_ROOT)/$(TL_INC_DIR) \
 
 TL_OBJS := 	$(TL_SRC_DIR)/wlan_qct_tl.o \
 		$(TL_SRC_DIR)/wlan_qct_tl_ba.o \
-		$(TL_SRC_DIR)/wlan_qct_tl_hosupport.o
+		$(TL_SRC_DIR)/wlan_qct_tl_hosupport.o \
+               $(TL_SRC_DIR)/wlan_qct_tl_trace.o
 
 ############ VOSS ############
 VOSS_DIR :=	CORE/VOSS
@@ -384,7 +349,6 @@ VOSS_OBJS :=    $(VOSS_SRC_DIR)/vos_api.o \
 		$(VOSS_SRC_DIR)/vos_mq.o \
 		$(VOSS_SRC_DIR)/vos_nvitem.o \
 		$(VOSS_SRC_DIR)/vos_packet.o \
-		$(VOSS_SRC_DIR)/vos_power.o \
 		$(VOSS_SRC_DIR)/vos_sched.o \
 		$(VOSS_SRC_DIR)/vos_threads.o \
 		$(VOSS_SRC_DIR)/vos_timer.o \
@@ -537,8 +501,17 @@ CDEFINES :=	-DANI_BUS_TYPE_PLATFORM=1 \
 		-DWLAN_FEATURE_GTK_OFFLOAD \
 		-DWLAN_WAKEUP_EVENTS \
 	        -DWLAN_KD_READY_NOTIFIER \
+		-DWLAN_NL80211_TESTMODE \
 		-DFEATURE_WLAN_BATCH_SCAN \
-		-DFEATURE_WLAN_LPHB
+		-DFEATURE_WLAN_LPHB \
+                -DFEATURE_WLAN_PAL_TIMER_DISABLE \
+                -DFEATURE_WLAN_PAL_MEM_DISABLE \
+                -DFEATURE_WLAN_CH144 \
+                -DWLAN_BUG_ON_SKB_ERROR \
+                -DWLAN_DXE_LOW_RESOURCE_TIMER \
+                -DWLAN_LOGGING_SOCK_SVC_ENABLE \
+                -DWLAN_FEATURE_LINK_LAYER_STATS \
+                -DWLAN_FEATURE_EXTSCAN
 
 ifneq ($(CONFIG_PRONTO_WLAN),)
 CDEFINES += -DWCN_PRONTO
@@ -569,10 +542,10 @@ CDEFINES += -DUSE_80211_WMMTSPEC_FOR_RIC
 endif
 endif
 
-ifeq ($(CONFIG_QCOM_CCX),y)
-CDEFINES += -DFEATURE_WLAN_CCX
-ifeq ($(CONFIG_QCOM_CCX_UPLOAD),y)
-CDEFINES += -DFEATURE_WLAN_CCX_UPLOAD
+ifeq ($(CONFIG_QCOM_ESE),y)
+CDEFINES += -DFEATURE_WLAN_ESE
+ifeq ($(CONFIG_QCOM_ESE_UPLOAD),y)
+CDEFINES += -DFEATURE_WLAN_ESE_UPLOAD
 endif
 endif
 
@@ -627,16 +600,24 @@ ifeq ($(RE_ENABLE_WIFI_ON_WDI_TIMEOUT),1)
 CDEFINES += -DWDI_RE_ENABLE_WIFI_ON_WDI_TIMEOUT
 endif
 
-ifeq ($(KERNEL_BUILD),1)
 CDEFINES += -DWLAN_OPEN_SOURCE
-endif
-
-ifeq ($(findstring opensource, $(WLAN_ROOT)), opensource)
-CDEFINES += -DWLAN_OPEN_SOURCE
-endif
 
 ifeq ($(CONFIG_ENABLE_LINUX_REG), y)
 CDEFINES += -DCONFIG_ENABLE_LINUX_REG
+endif
+
+ifeq ($(MEASURE_ROAM_TIME_DELAY),1)
+CDEFINES += -DDEBUG_ROAM_DELAY
+endif
+
+CDEFINES += -DFEATURE_WLAN_CH_AVOID
+
+ifeq ($(EXISTS_MSM_SMD),1)
+CDEFINES += -DEXISTS_MSM_SMD
+endif
+
+ifeq ($(EXISTS_MSM_SMSM),1)
+CDEFINES += -DEXISTS_MSM_SMSM
 endif
 
 # Fix build for GCC 4.7
