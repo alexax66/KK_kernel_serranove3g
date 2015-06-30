@@ -316,15 +316,17 @@ config KSM
 	  until a program has madvised that an area is MADV_MERGEABLE, and
 	  root has set /sys/kernel/mm/ksm/run to 1 (if CONFIG_SYSFS is set).
 
-config KSM_CHECK_PAGE
-	bool "Check page before scanning"
+config ADAPTIVE_KSM
+	bool "Enable Adaptive KSM"
 	depends on KSM
-	default n
 	help
-	  If enabled, this will check and skip if page is already scanned in
-	  same KSM scan cycle.
-	  This is useful in situation where you have parent and
-	  child process marking same area for KSM scanning.
+	  Enable Adaptive KSM
+
+config KSM_MEMCMP
+	bool "memcmp for KSM"
+	depends on KSM
+	help
+	  Using memcmp function that is only for KSM
 
 config DEFAULT_MMAP_MIN_ADDR
         int "Low address space to protect from user allocation"
