@@ -13,7 +13,7 @@ ifeq ($(CONFIG_MSM_KGSL),y)
 
 gpu_sysfs-y +=	gpu_sysfs_target_kgsl.o
 # Verify: target specific file is defined.
-GPU_SYSFS_TARGET_FILE_DEFINED := 1
+GPU_SYSFS_TARGET_FILE_DEFINED=1
 
 endif
 # End ---------- Qualcomm ----------
