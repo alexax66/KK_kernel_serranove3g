@@ -34,7 +34,7 @@
 #undef DEBUG_INTELLI_PLUG
 
 #define INTELLI_PLUG_MAJOR_VERSION	3
-#define INTELLI_PLUG_MINOR_VERSION	8
+#define INTELLI_PLUG_MINOR_VERSION	9
 
 #define DEF_SAMPLING_MS			(268)
 
@@ -372,6 +372,25 @@ static void screen_off_limit(bool on)
 	}
 }
 
+void __ref intelli_plug_perf_boost(bool on)
+{
+	unsigned int cpu;
+
+	if (intelli_plug_active) {
+		flush_workqueue(intelliplug_wq);
+		if (on) {
+			for_each_possible_cpu(cpu) {
+				if (!cpu_online(cpu))
+					cpu_up(cpu);
+			}
+		} else {
+			queue_delayed_work_on(0, intelliplug_wq,
+				&intelli_plug_work,
+				msecs_to_jiffies(sampling_time));
+		}
+	}
+}
+
 #ifdef CONFIG_POWERSUSPEND
 static void intelli_plug_suspend(struct power_suspend *handler)
 #else
@@ -408,25 +427,6 @@ static void wakeup_boost(void)
 		policy->cur = l_ip_info->cur_max;
 		cpufreq_update_policy(cpu);
 	}
-}
-
-void __ref intelli_plug_perf_boost(bool on)
-{
-    unsigned int cpu;
-    
-    if (intelli_plug_active) {
-        flush_workqueue(intelliplug_wq);
-        if (on) {
-            for_each_possible_cpu(cpu) {
-                if (!cpu_online(cpu))
-                cpu_up(cpu);
-            }
-        } else {
-            queue_delayed_work_on(0, intelliplug_wq,
-            	&intelli_plug_work,
-            	msecs_to_jiffies(sampling_time));
-        }
-    }
 }
 
 #ifdef CONFIG_POWERSUSPEND
@@ -602,4 +602,3 @@ MODULE_DESCRIPTION("'intell_plug' - An intelligent cpu hotplug driver for "
 MODULE_LICENSE("GPL");
 
 late_initcall(intelli_plug_init);
-
