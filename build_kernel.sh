@@ -1,6 +1,24 @@
-# make clean && make mrproper 
-mkdir output
-make -C $(pwd) O=output msm8916_sec_defconfig VARIANT_DEFCONFIG=msm8916_sec_serranove3g_eur_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+#!/bin/bash
+
+case "$1" in
+         3g)
+            VARIANT="msm8916_sec_serranove3g_eur_defconfig"
+            ;;
+
+        lte)
+            VARIANT="msm8916_sec_serranovelte_eur_defconfig"
+            ;;
+
+          *)
+            VARIANT="msm8916_sec_serranove3g_eur_defconfig"
+esac
+
+if [ ! -d $(pwd)/output ];
+    then
+        mkdir $(pwd)/output;
+    fi
+
+make -C $(pwd) O=output msm8916_sec_defconfig VARIANT_DEFCONFIG=$VARIANT SELINUX_DEFCONFIG=selinux_defconfig
 make -j5 -C $(pwd) O=output
 cp $(pwd)/output/arch/arm/boot/zImage $(pwd)/arch/arm/boot/zImage
 
