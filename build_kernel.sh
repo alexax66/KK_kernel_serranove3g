@@ -28,4 +28,6 @@ if [ ! -d $(pwd)/output/modules ];
     fi
 find $(pwd)/output -name '*.ko' -exec cp -v {} $(pwd)/output/modules \;
 
+$(pwd)/dtbTool -2 -o $(pwd)/output/arch/arm/boot/dt.img -s 2048 -p $(pwd)/output/scripts/dtc/ $(pwd)/output/arch/arm/boot/dts/ -v
+
 exit
