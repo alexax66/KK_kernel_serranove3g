@@ -1,10 +1,6 @@
 # Alexax's tweaks
 #
-<<<<<<< HEAD
 CONFIG_LOCALVERSION="-ALX-0.1.6"
-=======
-CONFIG_LOCALVERSION="-unofficial_v0.1.5"
->>>>>>> parent of e853d37... fs: Enable NFS support
 CONFIG_PANIC_ON_RECURSIVE_FAULT=y
 CONFIG_ARM_ATAG_DTB_COMPAT=y
 CONFIG_INTELLI_PLUG=y
