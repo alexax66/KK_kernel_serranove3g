@@ -18,6 +18,9 @@ if [ ! -d $(pwd)/output ];
         mkdir $(pwd)/output;
     fi
 
+rm -rf $(pwd)/output/arch/arm/boot/dts/*
+rm -f $(pwd)/output/arch/arm/boot/dt.img
+
 make -C $(pwd) O=output msm8916_sec_defconfig VARIANT_DEFCONFIG=$VARIANT SELINUX_DEFCONFIG=selinux_defconfig
 make -j5 -C $(pwd) O=output
 cp $(pwd)/output/arch/arm/boot/zImage $(pwd)/arch/arm/boot/zImage
