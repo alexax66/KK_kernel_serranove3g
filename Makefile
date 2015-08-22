@@ -194,8 +194,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 ARCH		?= arm
 # CROSS_COMPILE	?= /opt/toolchains/arm-eabi-4.7/bin/arm-eabi-
-CROSS_COMPILE   ?=/opt/toolchains/arm-cortex_a15-linux-gnueabihf-linaro_4.7.4-2014.04/bin/arm-eabi-
-#CROSS_COMPILE   ?=/opt/toolchains/LinaroMod-arm-eabi-4.9-master/bin/arm-eabi-
+#CROSS_COMPILE   ?=/opt/toolchains/arm-cortex_a15-linux-gnueabihf-linaro_4.7.4-2014.04/bin/arm-eabi-
+CROSS_COMPILE   ?=/opt/toolchains/LinaroMod-arm-eabi-4.9-master/bin/arm-eabi-
 #CROSS_COMPILE<>?=/opt/toolchains/arm-cortex_a15-linux-gnueabihf-linaro_4.9.3-2015.03/bin/arm-eabi-
 
 # Architecture as present in compile.h
